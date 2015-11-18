@@ -240,7 +240,7 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	public void paintImageScreen(Graphics gi, byte[] screenPixels, byte[] screenAttrs) {
 	    System.out.println("Estoy en paintImageScreen de SpectrumDisplay");
         if (screenPixels != null){
-        	System.out.println("No es null paintImageScreen de SpectrumDisplay");
+        	//System.out.println("No es null paintImageScreen de SpectrumDisplay");
 	        int longo=screenPixels.length;
 	        int scrPosition = 0;
 	        

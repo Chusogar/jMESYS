@@ -8,6 +8,7 @@ import jMESYS.drivers.Sinclair.Spectrum.SpectrumDisplay;
 import jMESYS.drivers.Sinclair.Spectrum.sites.WOSsite;
 import jMESYS.gui.jMESYSDisplay;
 import jMESYS.gui.loader.jMESYSFileLoader;
+import jMESYS.gui.loader.jMESYSFileZIP;
 
 import java.awt.AWTEvent;
 import java.awt.Dimension;
@@ -345,11 +346,11 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 
 	
 	public void actionPerformed(ActionEvent ev) {
-		System.out.println("Pulso "+ev.getActionCommand());
-		System.out.println(ev.getSource().getClass());
+		//System.out.println("Pulso "+ev.getActionCommand());
+		//System.out.println(ev.getSource().getClass());
 		
 		try {
-			System.out.println("Desactivamos CPU");
+			//System.out.println("Desactivamos CPU");
 			this.getComputer().player.stop();
 			this.getComputer().haltCPU();
 		} catch (Exception e) {
@@ -358,7 +359,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		
 		// comprobamos si es un menu de carga de ficheros
 		if ( ev.getSource().getClass().toString().endsWith("jMESYS.gui.jMESYSMenuItem") ) {
-			System.out.println("Dentro");
+			//System.out.println("Dentro");
 						
 			jMESYSMenuItem mItem = (jMESYSMenuItem) ev.getSource();
 			
@@ -378,7 +379,9 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			//fZ80.loadFormat("D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/ShadowOfTheUnicorn.Z80", new FileInputStream("D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/ShadowOfTheUnicorn.Z80"), this);
 			try {
 				getComputer().reset();
-				ff.loadFormat(name, new FileInputStream(name), getComputer());
+				String nameChecked = jMESYSFileZIP.checkZIP( name );
+				System.out.println("Voy a cargar "+nameChecked);
+				ff.loadFormat(nameChecked, new FileInputStream(nameChecked), getComputer());
 			} catch (Exception e) {
 				e.printStackTrace(System.out);
 			}
@@ -430,7 +433,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		getComputer().load();*/
 		
 		try {
-			System.out.println("Activamos CPU");
+			//System.out.println("Activamos CPU");
 			this.getComputer().resumeCPU();
 			if (getComputer().soundON) {
 				getComputer().player.play();
@@ -460,7 +463,9 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			FileFormat fl = fileDialog.getLoaderFile(fileDialog.getSelectedFile().getAbsolutePath());
 			if (fl != null) {
 				String name = fileDialog.getSelectedFile().getAbsolutePath();
-				fl.loadFormat(name, new FileInputStream(name), getComputer());
+				String nameChecked = jMESYSFileZIP.checkZIP( name );
+				System.out.println("Voy a cargar 2 "+nameChecked);
+				fl.loadFormat(nameChecked, new FileInputStream(nameChecked), getComputer());
 			}
 		} catch (Exception e) {
 			e.printStackTrace(System.out);

@@ -13,6 +13,10 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
@@ -84,8 +88,13 @@ public class jMESYSImagePreview extends JComponent implements PropertyChangeList
 				} catch (Exception e) {
 					e.printStackTrace(System.out);
 				}*/
+				
+				//String cad=((File)ev.getNewValue()).getAbsolutePath();
+				
+				String cad = jMESYSFileZIP.checkZIP( ((File)ev.getNewValue()).getAbsolutePath() );
+				
 				try {
-					String cad=((File)ev.getNewValue()).getAbsolutePath();
+					//String cad=((File)ev.getNewValue()).getAbsolutePath();
 					int countFormats=fileFormats.length;
 					int counter = 0;
 					FileFormat currentFF = null;

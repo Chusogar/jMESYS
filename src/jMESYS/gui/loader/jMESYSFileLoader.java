@@ -74,11 +74,13 @@ public class jMESYSFileLoader extends JFileChooser {
 		int counter = 0;
 		boolean foundFormat=false;
 		
+		String nameChecked = jMESYSFileZIP.checkZIP( name );
+		
 		FileFormat selectedFormat = null;
 		
 		while (!foundFormat && (counter < numFormats)) {
 			FileFormat ff = (FileFormat) fileFormats[counter];
-			if (name.toUpperCase().endsWith(ff.getExtension())){
+			if (nameChecked.toUpperCase().endsWith(ff.getExtension())){
 				foundFormat = true;
 				selectedFormat = ff;
 			}

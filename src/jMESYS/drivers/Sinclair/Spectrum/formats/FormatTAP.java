@@ -364,7 +364,7 @@ public class FormatTAP extends FileFormat {
 
 	
 
-	@Override
+	
 	public String getFileName() {
 		
 		return "D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/BACKTOSK.TAP";
