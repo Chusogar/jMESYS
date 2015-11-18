@@ -415,8 +415,18 @@ public abstract class Z80 extends CPU {
 	public final void execute() {
 		System.out.println("Execute...");
 		int    local_tstates = -tstatesPerInterrupt;
-
-		while ( !isHalted ) {
+		while ( true ) {
+			//if (isHalted) System.out.println("CPU stopped");
+			while (isHalted){
+				try{
+			          Thread.sleep(100);
+			         
+			          	
+			        }catch(Exception ex){
+			          //ex.printStackTrace();
+			        }
+			}
+		
 			
 			count++;
 
@@ -1421,6 +1431,7 @@ public abstract class Z80 extends CPU {
 		}
 
 		} // end while
+		
 	}
 
 

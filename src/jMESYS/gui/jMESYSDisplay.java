@@ -22,6 +22,7 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.image.BufferedImage;
 import java.awt.image.IndexColorModel;
 import java.io.BufferedReader;
 import java.io.File;
@@ -45,6 +46,8 @@ import org.w3c.dom.NodeList;
 public abstract class jMESYSDisplay extends JComponent {
 
 		public static Image imagenTV;
+		//private static BufferedImage imgScreen;
+		//private static Graphics graphScreen = null;
 		//public static JPanel borderPanel = new JPanel();
 		public static JPanel screenPanel = new JPanel();
 		public static boolean paintWholeScreen = true;
@@ -58,6 +61,9 @@ public abstract class jMESYSDisplay extends JComponent {
 		public static int FRAME_MARGINH=0;
 		public static int FRAME_MARGINV=0;
 		
+		public int[] currentPalette = null;
+		public boolean bwPalette = false;
+				
 		
 		/*protected static byte[] palcolor(int m) {
 			byte a[] = new byte[16];
@@ -72,11 +78,51 @@ public abstract class jMESYSDisplay extends JComponent {
 		public abstract void doPaintWholeScreen(Graphics gi);
 		public abstract Image getScreenImage();
 		public abstract void initScreen();
+		public abstract int[] getDefaultPalette();
+		
+		public int[] getPalette() {
+			return currentPalette;
+		}
+		
+		public void setPalette( int[] pal ) {
+			bwPalette = false;
+			currentPalette = pal;
+		}
+		
+		public void setBWPalette() {
+			bwPalette = true;
+			
+			currentPalette = getBWPalette();
+		}
+		
+		public int[] getBWPalette () {
+			
+			int numColors = getPalette().length;
+			
+			int[] bwPalette = new int[numColors];
+		
+			for (int i=0 ; i<numColors ; i++){
+				Color originalColor = new Color (getPalette()[i]);
+				double meanR = originalColor.getRed()*0.3;
+				double meanG = originalColor.getGreen()*0.59;
+				double meanB = originalColor.getBlue()*0.11;
+
+				int avg = ((new Double(meanR)).intValue() + (new Double(meanG)).intValue() + (new Double(meanB)).intValue());
+				
+				bwPalette[i] = avg<<16 | avg<<8 | avg;
+			}
+			
+			return bwPalette;
+		}
 		
 		public jMESYSDisplay(){
 			super();
 			//enableEvents(AWTEvent.KEY_EVENT_MASK);
 		}
+		
+		/*public Image getBufferedScreenImage() {
+			return imgScreen;
+		}*/
 		
 		public void paintBuffer() {
 			//canvasGraphics.drawImage( bufferImage, 0, 0, null );
@@ -92,15 +138,24 @@ public abstract class jMESYSDisplay extends JComponent {
 		    return result;
 		  }
 		
-		public void plot(int x, int y, Color tcolor) {
+		/*public void plot(int x, int y, Color tcolor) {
+			//if (graphScreen == null){
+			//	System.out.println("Creamos buffer de video");
+			//	imgScreen = new BufferedImage(FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale,BufferedImage.TYPE_INT_RGB);
+			//	graphScreen = imgScreen.getGraphics();
+			//}
 			Graphics gi = getScreenImage().getGraphics();
 			gi.setColor(tcolor);
 			gi.fillRect(x*pixelScale, y*pixelScale, pixelScale, pixelScale);
-		}
+			graphScreen.setColor(tcolor);
+			graphScreen.fillRect(x*pixelScale, y*pixelScale, pixelScale, pixelScale);
+		}*/
 		
 		
 	    public void paintComponent(Graphics g) {
+	    	//System.out.println("paintComponent jMESYSDisplay");
 	        g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
+	    	//g.drawImage(imgScreen, FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
 		}
 	    		
 		

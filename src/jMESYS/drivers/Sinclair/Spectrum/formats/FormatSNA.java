@@ -126,6 +126,7 @@ public class FormatSNA extends FileFormat {
 	}
 
 	public Image getScreen(String name, InputStream is, jMESYSDisplay disp, Graphics g) throws Exception {
+		System.out.println("getScreen SNA");
 		int        header[] = new int[27];
 		byte[] arrScr = new byte[256*192];
 		byte[] arrAtt = new byte[768];

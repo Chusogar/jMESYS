@@ -2,8 +2,11 @@ package jMESYS.drivers.Sinclair.Spectrum.formats;
 
 import java.awt.Graphics;
 import java.awt.Image;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
+//import java.io.FileInputStream;
 import java.io.InputStream;
 
 import jMESYS.core.cpu.CPU;
@@ -191,14 +194,29 @@ public class FormatZ80 extends FileFormat {
         return memo;
 	}
 	
-	@Override
+	
 	public void loadFormat(String name, InputStream is, CPU cpu) throws Exception {
 		int        header[] = new int[30];
 		boolean    compressed = false;
 		
 		File fis = new File(name);
-		
 		int bytesLeft = (new Long(fis.length())).intValue();
+		
+		/*ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+
+		int nRead;
+		byte[] databuf = new byte[16384];
+
+		while ((nRead = bis.read(databuf, 0, databuf.length)) != -1) {
+		  buffer.write(databuf, 0, nRead);
+		}
+
+		buffer.flush();
+		byte[] buf = buffer.toByteArray();
+		ByteArrayInputStream is = new ByteArrayInputStream(buf);
+		int bytesLeft = buf.length;*/
+		//int bytesLeft = is.available();
+		System.out.println(bytesLeft);
 
 		bytesLeft -= readBytes( is, header, 0, 30 );
 
@@ -374,6 +392,9 @@ public class FormatZ80 extends FileFormat {
 		 * 6 - 128K + MGT
 		 */
 		int type = header[2];
+		
+		//System.out.println(type);
+		//System.out.println(bytesLeft);
 	
 		if ( type > 6 ) {
 			throw new Exception( "Z80 (v300): unsupported type " + type );

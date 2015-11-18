@@ -1,6 +1,5 @@
 package jMESYS.gui.loader;
 
-import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
 import jMESYS.files.FileFormat;
 import jMESYS.gui.jMESYSDisplay;
 

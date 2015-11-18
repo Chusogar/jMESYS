@@ -28,7 +28,7 @@ public class Spectrum48k extends Z80 {
 	
 	int numInts = 0;
 	protected int cycles = 0;
-	protected boolean soundON = true;
+	public boolean soundON = true;
 
 	/*int tamMem = 65535;
 	
@@ -46,7 +46,7 @@ public class Spectrum48k extends Z80 {
 	/** Handle Sound **/
 	protected static final int CYCLES_PER_SECOND = 3500000;
 	protected static final int AUDIO_TEST        = 0x40000000;
-	protected SoundPlayer player = SoundUtil.getSoundPlayer(true);
+	public SoundPlayer player = SoundUtil.getSoundPlayer(true);
 	protected byte soundByte = 0;
 	protected int soundUpdate = 0;
 	protected int audioAdd = player.getClockAdder(AUDIO_TEST, CYCLES_PER_SECOND / 4);
@@ -66,6 +66,13 @@ public class Spectrum48k extends Z80 {
 	private int _A_G    = 0xff;
 	private int _CAPS_V = 0xff;
 	
+	/** Handle Joystick Kempston */
+	private int J_KEMPSTON_RIGHT = 0;
+	private int J_KEMPSTON_LEFT  = 0;
+	private int J_KEMPSTON_UP 	 = 0;
+	private int J_KEMPSTON_DOWN  = 0;
+	private int J_KEMPSTON_FIRE  = 0;
+	
 	// interrupts
 	private int     interruptCounter = 0;
 	public  long    timeOfLastInterrupt = 0;
@@ -74,7 +81,7 @@ public class Spectrum48k extends Z80 {
 	public long 	timeOfLastRefreshedScreen = 0;
 	public boolean 	runAtFullSpeed = false;
 	//public  double     refreshRate = 0.65;  // refresh screen every 'n' seconds
-	public  int     refreshRate = 1;  // refresh screen every 'n' interrupts
+	public  int     refreshRate = 2;  // refresh screen every 'n' interrupts
 	
 	// file formats supported
 	private FileFormat[] supportedFormats = null;
@@ -98,10 +105,11 @@ public class Spectrum48k extends Z80 {
 		// iniciamos el sonido
 		System.out.println("Init Sound");
 		if (soundON) {
+			soundON=true;
 			player.play();
+			player.writeStereo(AUDIO_TEST, AUDIO_TEST);
 		}
-		player.writeStereo(AUDIO_TEST, AUDIO_TEST);
-				
+					
 		// reseteamos la cpu
 		reset();
 		
@@ -114,6 +122,7 @@ public class Spectrum48k extends Z80 {
 	}
 	
 	public void cycle() {
+		
 		if (timeOfLastSleep == 0)
 			timeOfLastSleep=System.currentTimeMillis();
 		
@@ -125,30 +134,29 @@ public class Spectrum48k extends Z80 {
 	        } catch (Exception e) { }
 		}*/
 		
+		
 		if (soundON) {
-			//player.play();
-		}
-		
-		if (((cycles++ & 0x04) == 0) ) {
-		//if (((cycles) == 1) ) {
-	      //video.cycle();
-		  cycles = 0;
-	      soundUpdate += audioAdd;
-	      if ((soundUpdate & AUDIO_TEST) != 0) {
-	    	//player.play();
-	        soundUpdate -= AUDIO_TEST;
-	        player.writeStereo(soundByte, soundByte);
-	        
-	      } 
-	      //player.stop();
+			if (((cycles++ & 0x10) == 0) ) {
+			//if (((cycles) == 1) ) {
+		      //video.cycle();
+			  cycles = 0;
+		      soundUpdate += audioAdd;
+		      if ((soundUpdate & AUDIO_TEST) != 0) {
+		    	//player.play();
+		        soundUpdate -= AUDIO_TEST;
+		        player.writeStereo(soundByte, soundByte);
+		        
+		      } 
+	      
+			}
 	    }
-			
 		
+		//player.stop();
 	  }
 	
-	public boolean manageKeyboard(boolean down, int keyPressed, int modifiers){
-			//System.out.println("MODS: "+modifiers);
-			boolean key = doKey(down, keyPressed, modifiers);
+	public boolean manageKeyboard(boolean down, KeyEvent keyPressed){
+			
+			boolean key = doKey(down, keyPressed);
 			//resetKeyboard();
 			return key;
 	}
@@ -172,12 +180,13 @@ public class Spectrum48k extends Z80 {
 			if (display.arrayFichero != null){
 		
 				// Refresco de pantalla
-				if ( (interruptCounter % refreshRate) == 0 ) {
+				//if ( (interruptCounter % refreshRate) == 0 ) {
 				//if ( (System.currentTimeMillis()-timeOfLastRefreshedScreen) > timeOfLastRefreshedScreen ) {
+					
 					System.arraycopy(mem, 16384, display.arrayFichero, 0, display.arrayFichero.length);
 					display.loadScreen(display.arrayFichero);
 					timeOfLastRefreshedScreen = System.currentTimeMillis();
-				}
+				//}
 				
 				//System.out.println(mem[16384]);
 				/*try { 
@@ -213,7 +222,7 @@ public class Spectrum48k extends Z80 {
 				//System.out.println("Paro pausa");
 				
 				//try { Thread.sleep( 135 - durOfLastInterrupt ); }
-				try { Thread.sleep( 114 - durOfLastInterrupt ); }
+				try { Thread.sleep( 124 - durOfLastInterrupt ); }
 				catch ( Exception ignored ) {}
 				/*try { Thread.sleep( 10 ); }
 				catch ( Exception ignored ) {}*/
@@ -241,7 +250,27 @@ public class Spectrum48k extends Z80 {
 	 */
 	public int inb( int port ) {
 		int res = 0xff;
-		//System.out.println("Puerto: "+port);
+		//System.out.println("Leo Puerto: "+port);
+		// ---- JOYSTICKS HAVE PRIORITY!!!! ----
+		// Kempston Joystick
+		// Assuming an appropriate interface is attached, reading from port 0x1f returns 
+		// the current state of the Kempston joystick in the form 000FUDLR, 
+		// with active bits high.
+		if (( port  == 0x001F ) || ( (port & 0x0020) == 0)){
+			/*System.out.println("Joystick Kempston");
+			
+			System.out.println("J_KEMPSTON_FIRE="+J_KEMPSTON_FIRE);
+			System.out.println("J_KEMPSTON_UP="+J_KEMPSTON_UP);
+			System.out.println("J_KEMPSTON_DOWN="+J_KEMPSTON_DOWN);
+			System.out.println("J_KEMPSTON_LEFT="+J_KEMPSTON_LEFT);
+			System.out.println("J_KEMPSTON_RIGHT="+J_KEMPSTON_RIGHT);*/
+			
+			return ((J_KEMPSTON_FIRE << 4) | 
+					(J_KEMPSTON_UP << 3)   | 
+					(J_KEMPSTON_DOWN << 2) | 
+					(J_KEMPSTON_LEFT << 1) | 
+					(J_KEMPSTON_RIGHT));
+		}
 
 		if ( (port & 0x0001) == 0 ) {
 			//System.out.println("Tecla");
@@ -285,63 +314,112 @@ public class Spectrum48k extends Z80 {
 
 	/** Byte access */
 	public void pokeb( int addr, int newByte ){
-		if ( addr >= (22528+768) ) {
-			mem[ addr ] = (byte) newByte;
-			return;
-		}
-
+		
 		if ( addr < 16384 ) {
 			return;
 		}
+		
+		//if ( addr >= (22528+768) ) {
+			mem[ addr ] = (byte) newByte;
+			return;
+		//}
 
-		if ( mem[ addr ] != newByte ) {
-			mem[ addr ] = (byte)newByte;
-			
-			if ((addr >=16384) && (addr <= 22527)) {
-				try {
+		
+
+		//if ( mem[ addr ] != newByte ) {
+			//mem[ addr ] = (byte)newByte;
+			/*try {
+				
+				if ((addr >=16384) && (addr <= 22527)) {
+					display.screenPixels[addr-16384]=(byte) newByte;
+					//display.plot(addr, mem);
 					
-					//display.screenPixels[addr-16384]=(byte) newByte;
-					//display.plot(addr);
-				} catch (Exception e) {
-					System.out.println("Error en método PLOT en dirección "+addr);
-					e.printStackTrace(System.out);
+				} else if ( (addr >= 22528) && (addr < 23296) ){
+					display.screenAttrs[addr-22528]=(byte) newByte;
+					//display.paintBlockBack(addr, mem);
 				}
-			}
-		}	
+				
+			} catch (Exception e) {
+				System.out.println("Error en método PLOT en dirección "+addr);
+				e.printStackTrace(System.out);
+			}*/
+			
+		//}	
 	}
 
 	// Word access
 	public void pokew( int addr, int word ) {
-		byte _mem[] = mem;
-
-		if ( addr >= (22528+768) ) {
-			_mem[ addr ] = (byte) (new Integer(word).byteValue() & 0xff);
-			if ( ++addr != 65536 ) {
-				_mem[ addr ] = (byte) (word >> 8);
-			}
-			return;
-		}
-
+		//byte _mem[] = mem;
 		if ( addr < 16384 ) {
 			return;
 		}
 
-		int        newByte0 = word & 0xff;
-		if ( _mem[ addr ] != newByte0 ) {
-			//plot( addr, newByte0 );
-			_mem[ addr ] = (byte) newByte0;
-		}
+		//if ( addr >= (22528+768) ) {
+			mem[ addr ] = (byte) (new Integer(word).byteValue() & 0xff);
+			if ( ++addr != 65536 ) {
+				mem[ addr ] = (byte) (word >> 8);
+			}
+			return;
+		//}
 
-		int        newByte1 = word >> 8;
+		
+
+		/*int        newByte0 = word & 0xff;
+		if ( mem[ addr ] != newByte0 ) {
+						
+			mem[ addr ] = (byte) newByte0;*/
+			
+			/*try {
+				
+				if ((addr >=16384) && (addr <= 22527)) {
+					display.screenPixels[addr-16384]=(byte) newByte0;
+					//display.plot(addr, mem);
+					
+				} else if ( (addr >= 22528) && (addr < 23296) ){
+					display.screenAttrs[addr-22528]=(byte) newByte0;
+					//display.paintBlockBack(addr, mem);
+				}
+				
+			} catch (Exception e) {
+				System.out.println("Error en método PLOT en dirección "+addr);
+				e.printStackTrace(System.out);
+			}*/
+		//}
+
+		/*int        newByte1 = word >> 8;
 		if ( ++addr != (22528+768) ) { 
 			if ( _mem[ addr ] != newByte1 ) {
-				//plot( addr, newByte1 );
+				try {
+					//display.plot( addr );
+				} catch (Exception e){
+					e.printStackTrace(System.out);
+				}
 				_mem[ addr ] = (byte) newByte1;
 			}
 		}
 		else {
 			_mem[ addr ] = (byte) newByte1;
-		}
+		}*/
+	}
+	
+	private final void JoystickUP( boolean down ) {
+		if ( down ) J_KEMPSTON_UP = 1; else J_KEMPSTON_UP = 0;
+	}
+	
+	private final void JoystickDOWN( boolean down ) {
+		if ( down ) J_KEMPSTON_DOWN = 1; else J_KEMPSTON_DOWN = 0;
+	}
+	
+	private final void JoystickLEFT( boolean down ) {
+		if ( down ) J_KEMPSTON_LEFT = 1; else J_KEMPSTON_LEFT = 0;
+	}
+	
+	private final void JoystickRIGHT( boolean down ) {
+		if ( down ) J_KEMPSTON_RIGHT = 1; else J_KEMPSTON_RIGHT = 0;
+	}
+	
+	private final void JoystickFIRE( boolean down ) {
+		if ( down ) J_KEMPSTON_FIRE = 1; else J_KEMPSTON_FIRE = 0;
 	}
 
 	private final void K1( boolean down ) {
@@ -485,16 +563,183 @@ public class Spectrum48k extends Z80 {
 		_A_G    = 0xff;
 		_CAPS_V = 0xff;
 	}
-
-	public final boolean doKey(boolean down, int ascii, int mods) {
-		//System.out.println("DoKey spectrum "+ascii);
-		//boolean down = true;
+	
+	public final boolean doKey( boolean down, int ascii, int mods ) {
 		boolean    CAPS = ((mods & Event.CTRL_MASK) != 0);
 		boolean    SYMB = ((mods & Event.META_MASK) != 0);
 		boolean   SHIFT = ((mods & Event.SHIFT_MASK) != 0);
-		/*boolean CAPS=false;
-		boolean SHIFT=false;
-		boolean SYMB=false;*/
+
+		// Change control versions of keys to lower case
+		if ( (ascii >= 1) && (ascii <= 0x27) && SYMB ) {
+			ascii += ('a'-1);
+		}
+
+		switch ( ascii ) {
+		case 'a':    KA( down );    break;
+		case 'b':    KB( down );    break;
+		case 'c':    KC( down );    break;
+		case 'd':    KD( down );    break;
+		case 'e':    KE( down );    break;
+		case 'f':    KF( down );    break;
+		case 'g':    KG( down );    break;
+		case 'h':    KH( down );    break;
+		case 'i':    KI( down );    break;
+		case 'j':    KJ( down );    break;
+		case 'k':    KK( down );    break;
+		case 'l':    KL( down );    break;
+		case 'm':    KM( down );    break;
+		case 'n':    KN( down );    break;
+		case 'o':    KO( down );    break;
+		case 'p':    KP( down );    break;
+		case 'q':    KQ( down );    break;
+		case 'r':    KR( down );    break;
+		case 's':    KS( down );    break;
+		case 't':    KT( down );    break;
+		case 'u':    KU( down );    break;
+		case 'v':    KV( down );    break;
+		case 'w':    KW( down );    break;
+		case 'x':    KX( down );    break;
+		case 'y':    KY( down );    break;
+		case 'z':    KZ( down );    break;
+		case '0':    K0( down );    break;
+		case '1':    K1( down );    break;
+		case '2':    K2( down );    break;
+		case '3':    K3( down );    break;
+		case '4':    K4( down );    break;
+		case '5':    K5( down );    break;
+		case '6':    K6( down );    break;
+		case '7':    K7( down );    break;
+		case '8':    K8( down );    break;
+		case '9':    K9( down );    break;
+		case ' ':    CAPS = SHIFT;  KSPC( down );  break;
+
+		case 'A':    CAPS = true;   KA( down );    break;
+		case 'B':    CAPS = true;   KB( down );    break;
+		case 'C':    CAPS = true;   KC( down );    break;
+		case 'D':    CAPS = true;   KD( down );    break;
+		case 'E':    CAPS = true;   KE( down );    break;
+		case 'F':    CAPS = true;   KF( down );    break;
+		case 'G':    CAPS = true;   KG( down );    break;
+		case 'H':    CAPS = true;   KH( down );    break;
+		case 'I':    CAPS = true;   KI( down );    break;
+		case 'J':    CAPS = true;   KJ( down );    break;
+		case 'K':    CAPS = true;   KK( down );    break;
+		case 'L':    CAPS = true;   KL( down );    break;
+		case 'M':    CAPS = true;   KM( down );    break;
+		case 'N':    CAPS = true;   KN( down );    break;
+		case 'O':    CAPS = true;   KO( down );    break;
+		case 'P':    CAPS = true;   KP( down );    break;
+		case 'Q':    CAPS = true;   KQ( down );    break;
+		case 'R':    CAPS = true;   KR( down );    break;
+		case 'S':    CAPS = true;   KS( down );    break;
+		case 'T':    CAPS = true;   KT( down );    break;
+		case 'U':    CAPS = true;   KU( down );    break;
+		case 'V':    CAPS = true;   KV( down );    break;
+		case 'W':    CAPS = true;   KW( down );    break;
+		case 'X':    CAPS = true;   KX( down );    break;
+		case 'Y':    CAPS = true;   KY( down );    break;
+		case 'Z':    CAPS = true;   KZ( down );    break;
+
+		case '!':    SYMB = true;   K1( down );   break;
+		case '@':    SYMB = true;   K2( down );   break;
+		case '#':    SYMB = true;   K3( down );   break;
+		case '$':    SYMB = true;   K4( down );   break;
+		case '%':    SYMB = true;   K5( down );   break;
+		case '&':    SYMB = true;   K6( down );   break;
+		case '\'':   SYMB = true;   K7( down );   break;
+		case '(':    SYMB = true;   K8( down );   break;
+		case ')':    SYMB = true;   K9( down );   break;
+		case '_':    SYMB = true;   K0( down );   break;
+
+		case '<':    SYMB = true;   KR( down );   break;
+		case '>':    SYMB = true;   KT( down );   break;
+		case ';':    SYMB = true;   KO( down );   break;
+		case '"':    SYMB = true;   KP( down );   break;
+		case '^':    SYMB = true;   KH( down );   break;
+		case '-':    SYMB = true;   KJ( down );   break;
+		case '+':    SYMB = true;   KK( down );   break;
+		case '=':    SYMB = true;   KL( down );   break;
+		case ':':    SYMB = true;   KZ( down );   break;
+		case '£':    SYMB = true;   KX( down );   break;
+		case '?':    SYMB = true;   KC( down );   break;
+		case '/':    SYMB = true;   KV( down );   break;
+		case '*':    SYMB = true;   KB( down );   break;
+		case ',':    SYMB = true;   KN( down );   break;
+		case '.':    SYMB = true;   KM( down );   break;
+
+		case '[':    SYMB = true;   KY( down );   break;
+		case ']':    SYMB = true;   KU( down );   break;
+		case '~':    SYMB = true;   KA( down );   break;
+		case '|':    SYMB = true;   KS( down );   break;
+		case '\\':   SYMB = true;   KD( down );   break;
+		case '{':    SYMB = true;   KF( down );   break;
+		case '}':    SYMB = true;   KF( down );   break;
+
+		case '\n':
+		case '\r':   CAPS = SHIFT; KENT( down );    break;
+		case '\t':   CAPS = true; SYMB = true; break;
+
+		case '\b':
+		case 127:    CAPS = true; K0( down );    break;
+
+		case Event.F1: CAPS = true; K1( down ); break;
+		case Event.F2: CAPS = true; K2( down ); break;
+		case Event.F3: CAPS = true; K3( down ); break;
+		case Event.F4: CAPS = true; K4( down ); break;
+		case Event.F5: CAPS = true; K5( down ); break;
+		case Event.F6: CAPS = true; K6( down ); break;
+		case Event.F7: CAPS = true; K7( down ); break;
+		case Event.F8: CAPS = true; K8( down ); break;
+		case Event.F9: CAPS = true; K9( down ); break;
+		case Event.F10: CAPS = true; K0( down ); break;
+		case Event.F11: CAPS = true; break;
+ 		case Event.F12: SYMB = true; break;
+
+		case Event.LEFT:    CAPS = SHIFT; K5( down );    break;
+		case Event.DOWN:    CAPS = SHIFT; K6( down );    break;
+		case Event.UP:      CAPS = SHIFT; K7( down );    break;
+		case Event.RIGHT:   CAPS = SHIFT; K8( down );    break;
+					
+		case Event.END: {
+				if ( down ) {
+					//resetAtNextInterrupt = true;
+				}
+				break;
+			}
+		case '\033': // ESC
+		case Event.HOME: {
+				if ( down ) {
+					//pauseOrResume();
+				}
+				break;
+			}
+
+		default:
+			return false;
+		}
+
+		KSYMB( SYMB & down );
+		KCAPS( CAPS & down );
+
+		return true;
+	}
+
+	public final boolean doKey(boolean down, KeyEvent e) {
+		
+		int ascii = e.getKeyChar();
+		int mods = e.getModifiers();
+
+		switch ( e.getKeyCode() ) {			
+			case KeyEvent.VK_LEFT:  	JoystickLEFT(down); 	break;
+			case KeyEvent.VK_DOWN:  	JoystickDOWN(down); 	break;
+			case KeyEvent.VK_UP:    	JoystickUP(down); 		break;
+			case KeyEvent.VK_RIGHT:   	JoystickRIGHT(down); 	break;
+			case KeyEvent.VK_CONTROL: 	JoystickFIRE(down); 	break;
+		}
+		
+		boolean    CAPS = ((mods & Event.CTRL_MASK) != 0);
+		boolean    SYMB = ((mods & Event.META_MASK) != 0);
+		boolean   SHIFT = ((mods & Event.SHIFT_MASK) != 0);
 
 		// Change control versions of keys to lower case
 		if ( (ascii >= 1) && (ascii <= 0x27) && SYMB ) {

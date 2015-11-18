@@ -5,6 +5,7 @@ import jMESYS.gui.Version;
 import jMESYS.drivers.jMESYSDriver;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.drivers.Sinclair.Spectrum.SpectrumDisplay;
+import jMESYS.drivers.Sinclair.Spectrum.sites.WOSsite;
 import jMESYS.gui.jMESYSDisplay;
 import jMESYS.gui.loader.jMESYSFileLoader;
 
@@ -24,6 +25,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.Vector;
 
 import javax.swing.JFileChooser;
@@ -68,7 +70,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
         
         // creo el menu
         menubar = (new jMESYSMenu(COMPUTERS));
-        this.setMenuBar( menubar.getMenuBar() );
+        this.setMenuBar( menubar.getMenuBar(this) );
         menuOptions=this.getMenuBar().getMenuCount();
         
         // inicializo la pantalla
@@ -139,6 +141,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		// creo listeners del menú
 		for (int i=0 ; i<menuOptions ; i++){
 			t.getMenuBar().getMenu(i).addActionListener(t);
+			System.out.println(t.getMenuBar().getMenu(i).getActionCommand());
 		}
 		
 		//t.getDisplay().loadScreen("D:/workspace/jMESYS/bin/screens/WorldSeriesBasketball.scr");
@@ -274,7 +277,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	public void keyPressed(KeyEvent e) {
 		//System.out.println(e.getKeyChar());
 		//getComputer().manageKeyboard(e.getKeyCode());
-		getComputer().manageKeyboard(true, e.getKeyChar(), e.getModifiers());
+		getComputer().manageKeyboard(true, e);
 		//System.out.println("Tecla "+e.getKeyChar());
 	}
 
@@ -307,7 +310,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	public void keyReleased(KeyEvent e) {
 		//System.out.println("keyreleased");
 		
-		getComputer().manageKeyboard(false, e.getKeyChar(), e.getModifiers());
+		getComputer().manageKeyboard(false, e);
 	}
 
 	@Override
@@ -345,6 +348,14 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		System.out.println("Pulso "+ev.getActionCommand());
 		System.out.println(ev.getSource().getClass());
 		
+		try {
+			System.out.println("Desactivamos CPU");
+			this.getComputer().player.stop();
+			this.getComputer().haltCPU();
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
+		
 		// comprobamos si es un menu de carga de ficheros
 		if ( ev.getSource().getClass().toString().endsWith("jMESYS.gui.jMESYSMenuItem") ) {
 			System.out.println("Dentro");
@@ -374,34 +385,85 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			//getComputer().load();
 			
 		} else if (ev.getActionCommand().equals("Sinclair ZX Spectrum 48K")) {
-			
+			//openLoadDialog();	
 			try {
-				if (fileDialog == null)
-					fileDialog = new jMESYSFileLoader(getDisplay().getWidth(), getDisplay().getHeight(), getComputer().getSupportedFileFormats(), display);
-			} catch (Exception e) {
-				e.printStackTrace(System.out);
-			}
-			
-			fileDialog.setSelectedFile(null); 
-	        int option = fileDialog.showOpenDialog(this);
-	        if (option != jMESYSFileLoader.APPROVE_OPTION)
-	            return;  // User canceled or clicked the dialog's close box.
-	        System.out.println( fileDialog.getSelectedFile() );
-	        try {
+				// load and unzipped remote file
+				FileFormat[] ff = getComputer().getSupportedFileFormats();
+				WOSsite wos = new WOSsite();
+				
+				FileFormat xZ80 = ff[2];
 				getComputer().reset();
-				FileFormat fl = fileDialog.getLoaderFile(fileDialog.getSelectedFile().getAbsolutePath());
-				if (fl != null) {
-					String name = fileDialog.getSelectedFile().getAbsolutePath();
-					fl.loadFormat(name, new FileInputStream(name), getComputer());
-				}
+				xZ80.loadFormat("/a.z80", wos.getZIPcontents("http://www.worldofspectrum.org/pub/sinclair/games/m/MundialDeFutbol.z80.zip"), getComputer());
 			} catch (Exception e) {
 				e.printStackTrace(System.out);
 			}
+		} else if (ev.getActionCommand().equals("Color")) {
+			System.out.println("set Color Palette");
+			display.setPalette(display.getDefaultPalette());
+		} else if (ev.getActionCommand().equals("Black and White")) {
+			System.out.println("set Black and White Palette");
+			display.setBWPalette();
+		} else if (ev.getActionCommand().equals("Exit")) {
+			System.exit(0);
+		} else if (ev.getActionCommand().equals("All Formats")) {
+			openLoadDialog();
+		} else if (ev.getActionCommand().equals("Reset")) {
+			getComputer().resetKeyboard();
+			getComputer().player.stop();
+			getComputer().reset();
+			if (getComputer().soundON) {
+				getComputer().player.play();
+			}
+		}  else if (ev.getActionCommand().equals("Sound Off")) {
+			System.out.println("Sound Off");
+			getComputer().player.stop();
+			getComputer().soundON = false;
+		}  else if (ev.getActionCommand().equals("Sound On")) {
+			System.out.println("Sound On");
+			getComputer().player.play();
+			getComputer().soundON = true;
 		}
 		
 		/*System.out.println("Presiono "+ev.getID());	
 		System.out.println("Presiono "+ev.getActionCommand());
 		System.out.println("Presiono "+ev.getSource().getClass());
 		getComputer().load();*/
+		
+		try {
+			System.out.println("Activamos CPU");
+			this.getComputer().resumeCPU();
+			if (getComputer().soundON) {
+				getComputer().player.play();
+			}
+			//this.getComputer().player.play();
+			//this.getComputer().execute();
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
+	}
+
+	private void openLoadDialog() {
+		try {
+			if (fileDialog == null)
+				fileDialog = new jMESYSFileLoader(getDisplay().getWidth(), getDisplay().getHeight(), getComputer().getSupportedFileFormats(), display);
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
+		
+		fileDialog.setSelectedFile(null); 
+        int option = fileDialog.showOpenDialog(this);
+        if (option != jMESYSFileLoader.APPROVE_OPTION)
+            return;  // User canceled or clicked the dialog's close box.
+        System.out.println( fileDialog.getSelectedFile() );
+        try {
+			getComputer().reset();
+			FileFormat fl = fileDialog.getLoaderFile(fileDialog.getSelectedFile().getAbsolutePath());
+			if (fl != null) {
+				String name = fileDialog.getSelectedFile().getAbsolutePath();
+				fl.loadFormat(name, new FileInputStream(name), getComputer());
+			}
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
 	}
 }

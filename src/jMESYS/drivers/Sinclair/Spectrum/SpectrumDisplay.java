@@ -5,6 +5,7 @@ import java.awt.Graphics;
 import java.awt.Image;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.StringTokenizer;
 
 import javax.swing.JPanel;
 
@@ -20,10 +21,11 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	public static byte [] screenPixels;
 	public static byte [] screenAttrs;
 	//public static boolean[] flashAttrs = new boolean[6144];
-	public static int scr2attr[] = new int[6144];
+	public static int scr2attr[] = new int[6144]; // 32 cols (32 bytes)*192 rows
+	//public static int attr2scr[] = new int[768];
 	
-	//Vector con los valores correspondientes a los colores anteriores
-	  public static final int[] Paleta = {
+	// Original Spectrum Palette
+	  public static final int[] DefaultSP48Palette = {
 	    0x000000, /* negro */
 	    0x0000bf, /* azul */
 	    0xbf0000, /* rojo */
@@ -41,6 +43,9 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	    0xffff00, /* amarillo brillante */
 	    0xffffff  /* blanco brillante */
 	  };
+	  
+	  
+	  
 	
 	public SpectrumDisplay(){
 		super();
@@ -48,9 +53,14 @@ public class SpectrumDisplay extends jMESYSDisplay {
 		FRAME_HEIGHT=192;
 		FRAME_MARGINH=10;
 		FRAME_MARGINV=10;
+		
+		setPalette(DefaultSP48Palette);
 	}
 	
 	static {
+        /*for (int i=0 ; i< 32 ; i++){
+        	attr2scr[i]=-1;
+        }*/
         
         for (int address = 0x4000; address < 0x5800; address++) {
             int row = ((address & 0xe0) >>> 5) | ((address & 0x1800) >>> 8);
@@ -58,8 +68,16 @@ public class SpectrumDisplay extends jMESYSDisplay {
             int scan = (address & 0x700) >>> 8;
 
             scr2attr[address & 0x1fff] = 0x1800 + row * columns + col;
+            /*if (attr2scr[(row * columns + col)] == -1){
+            	attr2scr[(row * columns + col)] = (address);
+            }*/
+            //System.out.println((row * columns + col)+"="+attr2scr[(row * columns + col)]);
             //flashAttrs[address & 0x1fff] = ((scr2attr[address & 0x1fff] & 0x80) > 0);
-        }
+        }       
+        
+        /*for (int i=0 ; i< 768 ; i++){
+        	System.out.println(i+"="+attr2scr[i]);
+        }*/
 	}
 	
 	public int getX(int dir){
@@ -72,24 +90,18 @@ public class SpectrumDisplay extends jMESYSDisplay {
             ((dir & 0x1800) >> 5);        
 	}
 	
-	public void plot(int addr) throws Exception {
-		//System.out.println("Addr: "+addr);
+	/*public void plot(int addr, byte[] mem) throws Exception {
 		int x = getX(addr);
 		int y = getY(addr);
-		//System.out.println("x: "+x);
-		//System.out.println("y: "+y);
-		int pixel = screenPixels[addr-16384];
+		int pixel = mem[addr];
 		
-		//System.out.println("Pixel: "+pixel);
-		int attr = screenAttrs[(scr2attr[addr-16384])-6144];
-		
-		//System.out.println("attr: "+attr);
+		int attr = mem[16384+(scr2attr[addr-16384])];
 		Color tcolor=new Color(0);
-		//System.out.println("a");
+
 		int inkColor=getInkColor(attr);
-		//System.out.println("b");
+
 		int paperColor=getPaperColor(attr);
-		//System.out.println("c");
+
 		
 		for (int i=0 ; i<8 ; i++){
 			Byte by = (byte) ( ( ( pixel & 0x80 ) != 0 ) ? 1 : 0 );
@@ -98,23 +110,20 @@ public class SpectrumDisplay extends jMESYSDisplay {
             if (by==1){
 
             	plot(x+i, y, new Color (inkColor));
-            	//System.out.println("plot x="+(x+i)+" y="+y+" Color="+inkColor);
             	
             } else {
 
             	plot(x+i, y, new Color (paperColor));
-            	//System.out.println("plot2 x="+(x+i)+" y="+y+" Color="+paperColor);
+
             }
-			
-			// aquí meteremos una llamada a un método plot genérico
-			
 			
 			pixel = (byte) (pixel << 1);
 		}
 		
-	}
+	}*/
 	
 	public void doPaintWholeScreen(Graphics gi) {
+		//System.out.println("Pinto todo");
 		int scrPosition = 0;
 	    
 	    for (int i=0 ; i<FRAME_HEIGHT ; i++){
@@ -134,8 +143,8 @@ public class SpectrumDisplay extends jMESYSDisplay {
 		        int tinta=( (bright==0) ? (atributo & 0x7) : ((atributo & 0x7)+8));
 		        int papel=( (bright==0) ? ((atributo & 0x38) /8) : (((atributo & 0x38) /8)+8));
 		        					        	        
-		        int colorTinta=Paleta[tinta];
-		        int colorPapel=Paleta[papel];
+		        int colorTinta=getPalette()[tinta];
+		        int colorPapel=getPalette()[papel];
 		        //System.out.println("Dir: "+((scr2attr[dir-16384])-6144));
 		        
 		        if (lastFlashUpdate == 0) {
@@ -144,34 +153,33 @@ public class SpectrumDisplay extends jMESYSDisplay {
 		        
 		        boolean flash=( (atributo & 0x80) > 0);
 		        if (flash && flashImage){
-		        	colorTinta=Paleta[papel];
-		        	colorPapel=Paleta[tinta];
+		        	colorTinta=getPalette()[papel];
+		        	colorPapel=getPalette()[tinta];
 		        	//flashAttrs[(scr2attr[dir-16384])-6144] = false;					        	
 		        }
+		        
+		        int x = ((dir & 0x1f) << 3);
+                int y = ((dir & 0x00e0) >> 2) +
+                    ((dir & 0x0700) >> 8) +
+                    ((dir & 0x1800) >> 5);
 		        	            
 		        for(int k = 0; k < 8; k++){
 		            Byte by = (byte) ( ( ( valorPix & 0x80 ) != 0 ) ? 1 : 0 );
-		            
-		            int x = ((dir & 0x1f) << 3);
-	                int y = ((dir & 0x00e0) >> 2) +
-	                    ((dir & 0x0700) >> 8) +
-	                    ((dir & 0x1800) >> 5);
-
 			        
 		            if (by==1){
-
+		            	// paint all	
 		            	gi.setColor(new Color(colorTinta));
-
-		            	
+		            	//plot(x+k,y, new Color(colorTinta));
 		            } else {
-
+		            	// paint all
 		            	gi.setColor(new Color(colorPapel));
-
+		            	//plot(x+k,y, new Color(colorPapel));
 		            }
 		            
 		            scrPosition++;
-		            
+		            // paint all
 		            gi.fillRect(((x+k))*pixelScale, (y)*pixelScale, pixelScale, pixelScale);
+		            
 		            valorPix = (byte) (valorPix << 1);
 		            
 		          }
@@ -188,8 +196,8 @@ public class SpectrumDisplay extends jMESYSDisplay {
         int tinta=( (bright==0) ? (attribute & 0x7) : ((attribute & 0x7)+8));
         int papel=( (bright==0) ? ((attribute & 0x38) /8) : (((attribute & 0x38) /8)+8));
         					        	        
-        int colorTinta=Paleta[tinta];
-        int colorPapel=Paleta[papel];
+        int colorTinta=getPalette()[tinta];
+        int colorPapel=getPalette()[papel];
         //System.out.println("Dir: "+((scr2attr[dir-16384])-6144));
         
         if (lastFlashUpdate == 0) {
@@ -198,8 +206,8 @@ public class SpectrumDisplay extends jMESYSDisplay {
         
         boolean flash=( (attribute & 0x80) > 0);
         if (flash && flashImage){
-        	colorTinta=Paleta[papel];
-        	colorPapel=Paleta[tinta];
+        	colorTinta=getPalette()[papel];
+        	colorPapel=getPalette()[tinta];
         	//flashAttrs[(scr2attr[dir-16384])-6144] = false;					        	
         }
 		return colorTinta;
@@ -211,8 +219,8 @@ public class SpectrumDisplay extends jMESYSDisplay {
         int tinta=( (bright==0) ? (attribute & 0x7) : ((attribute & 0x7)+8));
         int papel=( (bright==0) ? ((attribute & 0x38) /8) : (((attribute & 0x38) /8)+8));
         					        	        
-        int colorTinta=Paleta[tinta];
-        int colorPapel=Paleta[papel];
+        int colorTinta=getPalette()[tinta];
+        int colorPapel=getPalette()[papel];
         //System.out.println("Dir: "+((scr2attr[dir-16384])-6144));
         
         if (lastFlashUpdate == 0) {
@@ -221,8 +229,8 @@ public class SpectrumDisplay extends jMESYSDisplay {
         
         boolean flash=( (attribute & 0x80) > 0);
         if (flash && flashImage){
-        	colorTinta=Paleta[papel];
-        	colorPapel=Paleta[tinta];
+        	colorTinta=getPalette()[papel];
+        	colorPapel=getPalette()[tinta];
         	//flashAttrs[(scr2attr[dir-16384])-6144] = false;					        	
         }
 		
@@ -230,8 +238,9 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	}
 	
 	public void paintImageScreen(Graphics gi, byte[] screenPixels, byte[] screenAttrs) {
-	    
+	    System.out.println("Estoy en paintImageScreen de SpectrumDisplay");
         if (screenPixels != null){
+        	System.out.println("No es null paintImageScreen de SpectrumDisplay");
 	        int longo=screenPixels.length;
 	        int scrPosition = 0;
 	        
@@ -256,8 +265,8 @@ public class SpectrumDisplay extends jMESYSDisplay {
 				        int tinta=( (bright==0) ? (atributo & 0x7) : ((atributo & 0x7)+8));
 				        int papel=( (bright==0) ? ((atributo & 0x38) /8) : (((atributo & 0x38) /8)+8));
 				        					        	        
-				        int colorTinta=Paleta[tinta];
-				        int colorPapel=Paleta[papel];
+				        int colorTinta=getPalette()[tinta];
+				        int colorPapel=getPalette()[papel];
 				        //System.out.println("Dir: "+((scr2attr[dir-16384])-6144));
 				        
 				        if (lastFlashUpdate == 0) {
@@ -266,8 +275,8 @@ public class SpectrumDisplay extends jMESYSDisplay {
 				        
 				        boolean flash=( (atributo & 0x80) > 0);
 				        if (flash && flashImage){
-				        	colorTinta=Paleta[papel];
-				        	colorPapel=Paleta[tinta];
+				        	colorTinta=getPalette()[papel];
+				        	colorPapel=getPalette()[tinta];
 				        	//flashAttrs[(scr2attr[dir-16384])-6144] = false;					        	
 				        }
 				        	            
@@ -281,18 +290,18 @@ public class SpectrumDisplay extends jMESYSDisplay {
 
 					        
 				            if (by==1){
-
+				            	// paint all
 				            	gi.setColor(new Color(colorTinta));
-
+				            	//plot(x+k, y, new Color(colorTinta));
 				            	
 				            } else {
-
+				            	// paint all
 				            	gi.setColor(new Color(colorPapel));
-
+				            	//plot(x+k, y, new Color(colorPapel));
 				            }
 				            
 				            scrPosition++;
-				            
+				            // paint all
 				            gi.fillRect(((x+k)), (y), 1, 1);
 				            valorPix = (byte) (valorPix << 1);
 				            
@@ -328,15 +337,20 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	        if (paintWholeScreen){
 	        	doPaintWholeScreen(gi);
 	        	//paintWholeScreen = false;
+	        	
 			}
+	        
+	        //gi.drawImage(getBufferedScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
 	        
 	        if ((System.currentTimeMillis()-lastFlashUpdate) >= 650) {
 	        	//System.out.println("Hay flash");
 	        	lastFlashUpdate = System.currentTimeMillis();
 	        	flashImage = !flashImage;
 	        }
-	}}
+	}
+        }
         return imagenTV;
+        //return getBufferedScreenImage();
     }
 	
 	public void loadScreen(String name) {
@@ -384,7 +398,9 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	    return buffer;
 	}
 	
-	public void getBlock(int address){
+	public int[] getBlock(int address){
+		
+		int[] colorBlock = new int[8];
 		
 		int highByte=(address & 0xFF00);
 		int lowByte=(address & 0x00FF);
@@ -395,8 +411,11 @@ public class SpectrumDisplay extends jMESYSDisplay {
 		for (int i=0 ; i< 8 ; i++) {
 			int sumB = i;
 			sumB = sumB << 8;
-			System.out.println("Block "+i+":"+(hByteClean+sumB+lowByte));
+			//System.out.println("Block "+i+":"+(hByteClean+sumB+lowByte));
+			colorBlock[i] = (hByteClean+sumB+lowByte);
 		}
+		
+		return colorBlock;
 	}
 	
 	public void initScreen(){
@@ -429,4 +448,21 @@ public class SpectrumDisplay extends jMESYSDisplay {
 		// repintamos
 		repaint();
 	}
+
+	
+	public int[] getDefaultPalette() {
+		return DefaultSP48Palette;
+	}
+
+	/*public void paintBlockBack(int addr, byte[] mem) throws Exception {
+
+		int firstAddrScreen = (((addr & 0x300) << 3) + (addr & 0xff))+16384;
+		
+		int[] blckCol = getBlock( (firstAddrScreen) );
+		
+		for (int i=0 ; i<8 ; i++) {
+			plot(blckCol[i], mem);
+		}
+		
+	}*/
 }

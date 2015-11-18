@@ -19,7 +19,7 @@ public class jMESYSMenu {
 		computers = comps;
 	}
 	
-	public MenuBar getMenuBar() {
+	public MenuBar getMenuBar(jMESYS t) {
 	
 		if (menubar==null){
 			
@@ -29,7 +29,7 @@ public class jMESYSMenu {
 			Menu menuFile = new Menu("File");
 		    Menu menuSys = new Menu("Systems");
 		    Menu menuSet = new Menu("Settings");
-		    //Menu crtc = new Menu("CRTC type");
+		    
 		    //Menu menue4 = new Menu("Monitor");
 		    //Menu menue6 = new Menu("Edit");
 		    Menu menuExtra = new Menu("Extras");
@@ -42,7 +42,9 @@ public class jMESYSMenu {
 		    menubar.add(menuHelp);
 		    
 		    mOpen = new Menu("Open");
+		    
 		    MenuItem mExit = new MenuItem("Exit");
+		    mExit.addActionListener(t);
 		    
 		    //mOpen.addActionListener(arg0);
 		    
@@ -58,7 +60,30 @@ public class jMESYSMenu {
 	           
 	        }
 		   }
+		   
+		    // Menu Settings
+		    Menu mDisplay = new Menu("Display");
+		    MenuItem crtcColor = new MenuItem("Color");
+		    crtcColor.addActionListener(t);
+		    MenuItem crtcBW = new MenuItem("Black and White");
+		    crtcBW.addActionListener(t);
+		    mDisplay.add(crtcColor);
+		    mDisplay.add(crtcBW);
+		    menuSet.add(mDisplay);
 		    
+		    menuSet.addSeparator();
+		    MenuItem mReset = new MenuItem("Reset");
+		    mReset.addActionListener(t);
+		    menuSet.add(mReset);
+		    
+		    menuSet.addSeparator();
+		    MenuItem mSoundOff = new MenuItem("Sound Off");
+		    mSoundOff.addActionListener(t);
+		    menuSet.add(mSoundOff);
+		    
+		    MenuItem mSoundOn = new MenuItem("Sound On");
+		    mSoundOn.addActionListener(t);
+		    menuSet.add(mSoundOn);
 		}
 		
 		return menubar;
@@ -78,6 +103,11 @@ public class jMESYSMenu {
 				mItem.addActionListener(t);
 				mOpen.add( mItem );
 			}
+			
+			mOpen.addSeparator();
+			MenuItem allFormats = new MenuItem("All Formats");
+			allFormats.addActionListener(t);
+			mOpen.add(allFormats);
 			
 		} else {
 			System.out.println("+++No supported files+++");
