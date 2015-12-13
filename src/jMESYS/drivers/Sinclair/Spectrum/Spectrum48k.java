@@ -10,7 +10,9 @@ import jMESYS.drivers.Sinclair.Spectrum.formats.FormatZ80;
 import jMESYS.files.FileFormat;
 import jMESYS.gui.jMESYSDisplay;
 
+import java.awt.Color;
 import java.awt.Event;
+import java.awt.Graphics;
 import java.awt.event.KeyEvent;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -39,9 +41,7 @@ public class Spectrum48k extends Z80 {
 	
 	/** Handle screen **/
 	private SpectrumDisplay display;
-	private int newBorder = -7;
-	private int oldBorder = 0;
-	private int borderWidth = 20;
+	
 	
 	/** Handle Sound **/
 	protected static final int CYCLES_PER_SECOND = 3500000;
@@ -49,7 +49,7 @@ public class Spectrum48k extends Z80 {
 	public SoundPlayer player = SoundUtil.getSoundPlayer(true);
 	protected byte soundByte = 0;
 	protected int soundUpdate = 0;
-	protected int audioAdd = player.getClockAdder(AUDIO_TEST, CYCLES_PER_SECOND / 4);
+	protected int audioAdd = player.getClockAdder(AUDIO_TEST, CYCLES_PER_SECOND / 5);
 	
 	/** Handle Keyboard */
 	private static final int b4 = 0x10;
@@ -250,6 +250,7 @@ public class Spectrum48k extends Z80 {
 	 */
 	public int inb( int port ) {
 		int res = 0xff;
+		//System.out.println("In Port: "+port);
 		//System.out.println("Leo Puerto: "+port);
 		// ---- JOYSTICKS HAVE PRIORITY!!!! ----
 		// Kempston Joystick
@@ -283,33 +284,31 @@ public class Spectrum48k extends Z80 {
 			if ( (port & 0x0200) == 0 ) { res &= _A_G;}
 			if ( (port & 0x0100) == 0 ) { res &= _CAPS_V;}
 			//resetKeyboard();
-			//ear = (la_Cinta.valor() ? 0xFF : 0xBF);
+			boolean la_Cinta_valor = true;
+			ear = (la_Cinta_valor ? 0xFF : 0xBF);
 		}
-
+		
+		//System.out.println("byte: "+(res | (ear & 0x40)));
 		 return (res | (ear & 0x40));
 	}
 	
-	public final void borderPaint() {
-		if ( oldBorder == newBorder ) {
-			return;
-		}
-		oldBorder = newBorder;
-
-		if ( borderWidth == 0 ) {
-			return;
-		}
-
-		/*parentGraphics.setColor( display.Paleta[ newBorder + 8 ] );
-		parentGraphics.fillRect( 0, 0,
-			(nPixelsWide*display.pixelScale) + borderWidth*2,
-			(nPixelsHigh*display.pixelScale) + borderWidth*2 );*/
-	}
+	
 	
 	public void outb( int port, int outByte, int tstates ) {
+		//System.out.println("Out Port: "+port+" byte: "+outByte);
 		if ( (port & 0x0001) == 0 ) {
-			newBorder = (outByte & 0x07);
+			display.newBorder = (outByte & 0x07);
 		}
 		soundByte = (outByte & 0x10) == 0 ? (byte)0x7f : (byte)0;
+		
+		// tape access
+		//if(((valor & 0x10) != (puertos[puerto & 0xff] & 0x10)) || (la_Cinta.playin())){
+		if (port == 0xFF){
+			int valor=soundByte;
+			ear = ((valor & 0x10) != 0 ? 0xFF : 0xBF);
+			//System.out.println("Out Port: "+port+" byte: "+outByte);
+		}
+		
 	}
 
 	/** Byte access */

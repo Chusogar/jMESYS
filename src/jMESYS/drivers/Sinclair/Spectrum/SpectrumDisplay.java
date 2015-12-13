@@ -13,7 +13,15 @@ import jMESYS.gui.jMESYSDisplay;
 
 public class SpectrumDisplay extends jMESYSDisplay {
 	
-	JPanel borderPanel = new JPanel();
+	// border emulation
+	public JPanel borderPanel = new JPanel();
+	public static Image imageBorder;
+	public int newBorder = 7;
+	public int oldBorder = -1;
+	public int borderWidth = 20;
+	
+	//public JPanel innerPanel = new JPanel();
+	
 	boolean flashImage = true;
 	private long lastFlashUpdate = 0;
 	public static int columns = 32;
@@ -178,7 +186,7 @@ public class SpectrumDisplay extends jMESYSDisplay {
 		            
 		            scrPosition++;
 		            // paint all
-		            gi.fillRect(((x+k))*pixelScale, (y)*pixelScale, pixelScale, pixelScale);
+		            gi.fillRect((((x+k))*pixelScale)+FRAME_MARGINH, ((y*pixelScale))+FRAME_MARGINV, pixelScale, pixelScale);
 		            
 		            valorPix = (byte) (valorPix << 1);
 		            
@@ -322,12 +330,45 @@ public class SpectrumDisplay extends jMESYSDisplay {
 
 	
 	public Image getScreenImage() {		
+		
 		return getTVImage(screenPixels, screenAttrs);
+	}
+	
+	public final void borderPaint() {
+		/*if ( oldBorder == newBorder ) {
+			return;
+		}*/
+		oldBorder = newBorder;
+
+		if ( borderWidth == 0 ) {
+			return;
+		}
+		
+		if (imageBorder==null){
+			imageBorder=createImage((FRAME_WIDTH*pixelScale)+(FRAME_MARGINH*2), (FRAME_HEIGHT*pixelScale)+(FRAME_MARGINV*2));
+		}
+		
+		//Graphics parentGraphics = imageBorder.getGraphics();
+		Graphics parentGraphics = imagenTV.getGraphics();
+		parentGraphics.setColor( new Color(getPalette()[ newBorder + 8 ]) );
+		parentGraphics.fillRect( 0, 0,
+			(FRAME_WIDTH*pixelScale) + borderWidth*2,
+			(FRAME_HEIGHT*pixelScale) + borderWidth*2 );
 	}
 	
 	public Image getTVImage(byte[] screenPixels, byte[] screenAttrs) {
 		if (imagenTV != null){
 		//Image imagenTV = new Image(FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale);
+		
+		//Graphics gi = imagenTV.getGraphics();
+		if (imageBorder == null) {
+			System.out.println("Es nulo");
+			System.out.println(borderPanel);
+			imageBorder = borderPanel.createImage((FRAME_WIDTH*pixelScale)+(FRAME_MARGINH*2), (FRAME_HEIGHT*pixelScale)+(FRAME_MARGINV*2));
+			System.out.println(imageBorder);
+		}
+		borderPaint();
+		//Graphics gi = imageBorder.getGraphics();
 		Graphics gi = imagenTV.getGraphics();
         
         if (screenPixels != null){
@@ -350,6 +391,7 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	}
         }
         return imagenTV;
+		//return imageBorder;
         //return getBufferedScreenImage();
     }
 	

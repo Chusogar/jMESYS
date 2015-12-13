@@ -1,6 +1,7 @@
 package jMESYS.gui;
 
 import jMESYS.files.FileFormat;
+import jMESYS.files.RemoteFile;
 import jMESYS.gui.Version;
 import jMESYS.drivers.jMESYSDriver;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
@@ -11,8 +12,11 @@ import jMESYS.gui.loader.jMESYSFileLoader;
 import jMESYS.gui.loader.jMESYSFileZIP;
 
 import java.awt.AWTEvent;
+import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Event;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
@@ -29,11 +33,26 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Vector;
 
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.JTree;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.UIManager;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.text.DefaultCaret;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreePath;
 
 
-public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnable, ActionListener{
+public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnable, ActionListener, TreeSelectionListener{
 	
 	private jMESYSDisplay display = null;
 	private Spectrum48k spectrum = null;
@@ -44,7 +63,12 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	
 	// custom file dialog
 	private jMESYSFileLoader fileDialog=null;
-    
+	
+	// tree
+	private JTree tree;
+	private JTextField input;
+    //private String addrSiteWOS="http://localhost:8080/WOSserver/pub/sinclair/games/";
+	private String addrSiteWOS="http://www.worldofspectrum.org/pub/sinclair/games/";
 	
 	public jMESYSDisplay getDisplay() {
 		return display;
@@ -99,14 +123,10 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		t.setTitle( Version.getVersion() );
 		System.out.println("FRAME_MARGINH="+t.getDisplay().FRAME_MARGINH);
 		System.out.println("FRAME_MARGINV="+t.getDisplay().FRAME_MARGINV);
-		t.setSize(t.getDisplay().FRAME_WIDTH*t.getDisplay().pixelScale+((t.getDisplay().FRAME_MARGINH)*2)+16, t.getDisplay().FRAME_HEIGHT*t.getDisplay().pixelScale+((t.getDisplay().FRAME_MARGINV)*2)+38+21);
-		//System.out.println("IMAGENTV: "+t.getDisplay().imagenTV);
-		t.getDisplay().imagenTV= t.createImage(t.getDisplay().FRAME_WIDTH*t.getDisplay().pixelScale, t.getDisplay().FRAME_HEIGHT*t.getDisplay().pixelScale);
 		
+		t.resizeScreen();	
 		//t.getDisplay().loadScreen("D:/workspace/jMESYS/bin/screens/WorldSeriesBaseball.scr");
-		t.getDisplay().initScreen();
-		//System.out.println("IMAGENTV: "+t.getDisplay().imagenTV);
-	
+		
 		/*t.getDisplay().arrayFichero = t.getDisplay().cargaPantalla("D:/workspace/jMESYS/bin/screens/WorldSeriesBaseball.scr", (t.getDisplay().FRAME_HEIGHT*t.getDisplay().columns)+768);
 
 		t.getDisplay().screenPixels=new byte[(t.getDisplay().FRAME_WIDTH*t.getDisplay().FRAME_HEIGHT)];
@@ -118,12 +138,6 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		t.getDisplay().repaint();
 		*/
 
-		/*try {
-			Thread.sleep(new Long(2000));
-		}catch (Exception e){
-			e.printStackTrace(System.out);
-		}*/
-		
 		System.out.println("Creo Spectrum");
 		Spectrum48k computer = new Spectrum48k(3.5, t.display); 
 		t.setComputer( computer );
@@ -178,6 +192,16 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		System.arraycopy(spectrum.mem, 16384, t.getDisplay().arrayFichero, 0, t.getDisplay().arrayFichero.length);
 		t.getDisplay().loadScreen(t.getDisplay().arrayFichero);
 		System.out.println("Cargado!");*/
+	}
+	 
+	private void resizeScreen() {
+		System.out.println("Resizing Screen...");
+		this.setSize(getDisplay().FRAME_WIDTH*getDisplay().pixelScale+((getDisplay().FRAME_MARGINH)*2)+16, getDisplay().FRAME_HEIGHT*getDisplay().pixelScale+((getDisplay().FRAME_MARGINV)*2)+38+21);
+		//System.out.println("IMAGENTV: "+t.getDisplay().imagenTV);
+		getDisplay().imagenTV= createImage(getDisplay().FRAME_WIDTH*getDisplay().pixelScale+((getDisplay().FRAME_MARGINH)*2), getDisplay().FRAME_HEIGHT*getDisplay().pixelScale+((getDisplay().FRAME_MARGINV)*2));
+		
+		//t.getDisplay().loadScreen("D:/workspace/jMESYS/bin/screens/WorldSeriesBaseball.scr");
+		getDisplay().initScreen();
 	}
 
 	private void setComputer(Spectrum48k testSpectrum) {
@@ -365,7 +389,8 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			
 			try {
 				if (fileDialog == null)
-					fileDialog = new jMESYSFileLoader(getDisplay().getWidth(), getDisplay().getHeight(), getComputer().getSupportedFileFormats(), getDisplay());
+					//fileDialog = new jMESYSFileLoader(getDisplay().getWidth(), getDisplay().getHeight(), getComputer().getSupportedFileFormats(), getDisplay());
+					fileDialog = new jMESYSFileLoader(256, 192, getComputer().getSupportedFileFormats(), getDisplay());
 			} catch (Exception e) {
 				e.printStackTrace(System.out);
 			}
@@ -396,7 +421,10 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 				
 				FileFormat xZ80 = ff[2];
 				getComputer().reset();
-				xZ80.loadFormat("/a.z80", wos.getZIPcontents("http://www.worldofspectrum.org/pub/sinclair/games/m/MundialDeFutbol.z80.zip"), getComputer());
+				RemoteFile rf = new RemoteFile();
+				rf.setName("SpiritOfNinjaThe.z80.zip");
+				rf.setPath("http://www.worldofspectrum.org/pub/sinclair/games/s");
+				xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());
 			} catch (Exception e) {
 				e.printStackTrace(System.out);
 			}
@@ -425,7 +453,22 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			System.out.println("Sound On");
 			getComputer().player.play();
 			getComputer().soundON = true;
+		}  else if (ev.getActionCommand().equals("Size X 1")) {
+			display.pixelScale=1;
+			this.resizeScreen();		
+		}  else if (ev.getActionCommand().equals("Size X 2")) {
+			display.pixelScale=2;
+			this.resizeScreen();
+		}  else if (ev.getActionCommand().equals("Size X 3")) {
+			display.pixelScale=3;
+			this.resizeScreen();
+		}  else if (ev.getActionCommand().equals("Play Tape")) {
+			System.out.println("Playing Tape");
+		}  else if (ev.getActionCommand().equals("Remote WOS")) {
+			System.out.println("Remote World of Spectrum Site");
+			createWOSFrame();
 		}
+		
 		
 		/*System.out.println("Presiono "+ev.getID());	
 		System.out.println("Presiono "+ev.getActionCommand());
@@ -443,6 +486,77 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
 		}
+	}
+
+	private void createWOSFrame() {
+		
+		
+	
+	                /*JFrame frame = new JFrame("Test");
+	                frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+	                try 
+	                {
+	                   UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+	                } catch (Exception e) {
+	                   e.printStackTrace();
+	                }*/
+	                JPanel panel = new JPanel();
+	                panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+	                panel.setOpaque(true);
+	                /*JTextArea textArea = new JTextArea(15, 50);
+	                textArea.setWrapStyleWord(true);
+	                textArea.setEditable(false);
+	                textArea.setFont(Font.getFont(Font.SANS_SERIF));*/
+	                DefaultMutableTreeNode root = new DefaultMutableTreeNode("/");
+	                tree = new JTree(root);
+	                //tree.addTreeSelectionListener(this);
+	                
+	        		//getBranch("http://localhost:8080/WOSserver/pub/sinclair/games/", root);
+	                getBranch("http://www.worldofspectrum.org/pub/sinclair/games/", root);
+	        		
+	        		tree.expandPath(new TreePath(root.getPath()));
+	        		tree.addTreeSelectionListener(this);
+	        		
+	                //JScrollPane scroller = new JScrollPane(textArea);
+	                JScrollPane scroller = new JScrollPane(tree);
+	                scroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+	                scroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+	                JPanel inputpanel = new JPanel();
+	                inputpanel.setLayout(new FlowLayout());
+	                input = new JTextField(20);
+	                JButton button = new JButton("Enter");
+	                /*DefaultCaret caret = (DefaultCaret) textArea.getCaret();
+	                caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);*/
+	                panel.add(scroller);
+	                inputpanel.add(input);
+	                inputpanel.add(button);
+	                panel.add(inputpanel);
+	                /*frame.getContentPane().add(BorderLayout.CENTER, panel);
+	                frame.pack();
+	                frame.setLocationByPlatform(true);
+	                frame.setVisible(true);
+	                frame.setResizable(false);*/
+	                input.requestFocus();
+	                
+	                JDialog frame = new JDialog(this, "Remote Site", true);
+	        		frame.getContentPane().add(panel);
+	        		frame.pack();
+	        		frame.setVisible(true);
+	}
+
+	private void getBranch(String addrWOS, DefaultMutableTreeNode parentNode) {
+		WOSsite site = new WOSsite();
+        site.setRemoteAddress( addrWOS );
+		Vector v = site.readRemotePage();
+		
+		int numNodes = v.size();
+		for (int i=0 ; i<numNodes ; i++) {
+			RemoteFile rf = (RemoteFile) v.elementAt(i);
+			DefaultMutableTreeNode nodAct = new DefaultMutableTreeNode(rf.getName());
+			parentNode.add(nodAct);
+		}
+		
+		tree.expandPath(new TreePath(parentNode.getPath()));
 	}
 
 	private void openLoadDialog() {
@@ -464,11 +578,58 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			if (fl != null) {
 				String name = fileDialog.getSelectedFile().getAbsolutePath();
 				String nameChecked = jMESYSFileZIP.checkZIP( name );
-				System.out.println("Voy a cargar 2 "+nameChecked);
+				//System.out.println("Voy a cargar 2 "+nameChecked);
 				fl.loadFormat(nameChecked, new FileInputStream(nameChecked), getComputer());
 			}
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
 		}
+	}
+
+	public void valueChanged(TreeSelectionEvent event) {
+		System.out.println("Click tree");
+		tree.expandPath(event.getPath());
+        input.setText(event.getPath().toString());
+        
+        String completePath = addrSiteWOS+event.getPath().getLastPathComponent().toString();
+        String partialPath = addrSiteWOS;
+        TreePath tp = event.getPath();
+        String strFile = addrSiteWOS;
+        
+        int numPath = tp.getPathCount();
+        for (int i=0 ; i<numPath ; i++){
+        	strFile += (tp.getPath()[i]).toString();
+        }
+        
+        
+        System.out.println("CompletePath: "+completePath);
+        System.out.println("PartialPath: "+partialPath);
+        System.out.println("eventPath: "+tp.toString());
+        System.out.println("strFile: "+strFile);
+        
+        if (event.getPath().getLastPathComponent().toString().endsWith("/")){
+        	System.out.println("Directorio "+addrSiteWOS+event.getPath().getLastPathComponent().toString());
+        	getBranch(completePath, 
+        			(DefaultMutableTreeNode)((JTree)event.getSource()).getLastSelectedPathComponent());
+        	
+        } else {
+        	System.out.println("Fichero");
+        	
+        	try {
+				// load and unzipped remote file
+				FileFormat[] ff = getComputer().getSupportedFileFormats();
+				WOSsite wos = new WOSsite();
+				
+				FileFormat xZ80 = ff[2];
+				getComputer().reset();
+				RemoteFile rf = new RemoteFile();
+				rf.setName( strFile );
+				
+				rf.setPath("");
+				xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());
+			} catch (Exception e) {
+				e.printStackTrace(System.out);
+			}
+        }
 	}
 }

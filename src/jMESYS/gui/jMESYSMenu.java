@@ -30,6 +30,11 @@ public class jMESYSMenu {
 		    Menu menuSys = new Menu("Systems");
 		    Menu menuSet = new Menu("Settings");
 		    
+		    Menu mTape = new Menu("Tape");
+		    MenuItem mPlayTape = new MenuItem("Play Tape");
+		    mPlayTape.addActionListener(t);
+		    mTape.add(mPlayTape);
+		    
 		    //Menu menue4 = new Menu("Monitor");
 		    //Menu menue6 = new Menu("Edit");
 		    Menu menuExtra = new Menu("Extras");
@@ -38,6 +43,7 @@ public class jMESYSMenu {
 		    menubar.add(menuFile);
 		    menubar.add(menuSys);
 		    menubar.add(menuSet);
+		    menubar.add(mTape);
 		    menubar.add(menuExtra);
 		    menubar.add(menuHelp);
 		    
@@ -71,6 +77,19 @@ public class jMESYSMenu {
 		    mDisplay.add(crtcBW);
 		    menuSet.add(mDisplay);
 		    
+		    mDisplay.addSeparator();
+		    
+		    MenuItem mX1 = new MenuItem("Size X 1");
+		    mX1.addActionListener(t);
+		    mDisplay.add(mX1);
+		    
+		    MenuItem mX2 = new MenuItem("Size X 2");
+		    mX2.addActionListener(t);
+		    mDisplay.add(mX2);
+		    
+		    MenuItem mX3 = new MenuItem("Size X 3");
+		    mX3.addActionListener(t);
+		    mDisplay.add(mX3);
 		    menuSet.addSeparator();
 		    MenuItem mReset = new MenuItem("Reset");
 		    mReset.addActionListener(t);
@@ -108,6 +127,11 @@ public class jMESYSMenu {
 			MenuItem allFormats = new MenuItem("All Formats");
 			allFormats.addActionListener(t);
 			mOpen.add(allFormats);
+			
+			mOpen.addSeparator();
+			MenuItem mWOS = new MenuItem("Remote WOS");
+			mWOS.addActionListener(t);
+			mOpen.add(mWOS);
 			
 		} else {
 			System.out.println("+++No supported files+++");

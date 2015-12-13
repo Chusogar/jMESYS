@@ -145,7 +145,7 @@ public abstract class Z80 extends CPU {
 		_A = bite;
 	}
 
-	public final int F() {
+	public int F() {
 		return	(Sset()  ? F_S  : 0)  |
 			(Zset()  ? F_Z  : 0)  |
 			(f5      ? F_5  : 0)  |
@@ -155,7 +155,7 @@ public abstract class Z80 extends CPU {
 			(Nset()  ? F_N  : 0)  |
 			(Cset()  ? F_C  : 0);
 	}
-	public final void F( int bite ) {
+	public void F( int bite ) {
 		fS  = (bite & F_S)  != 0;
 		fZ  = (bite & F_Z)  != 0;
 		f5  = (bite & F_5)  != 0;
@@ -258,7 +258,7 @@ public abstract class Z80 extends CPU {
 
 
 	/** Byte access */
-	private final int peekb( int addr ) {
+	public int peekb( int addr ) {
 		int b= ((byte) mem[ (addr & 0xFFFF) ]) & 0xFF;
 		return b;
 	}
@@ -277,7 +277,7 @@ public abstract class Z80 extends CPU {
 		addr++;
 		pokeb( addr & 0xffff, word >> 8 );
 	}
-	private final int peekw( int addr ) {
+	public int peekw( int addr ) {
 		int        t = peekb( addr );
 		addr++;
 		return t | (peekb( addr & 0xffff ) << 8);
@@ -4348,6 +4348,10 @@ public abstract class Z80 extends CPU {
 		
 		if (regName.equals("I")){
 			reg=I();
+		} else if(regName.equals("A")){
+			reg=A();
+		} else if(regName.equals("F")){
+			reg=F();
 		} else if(regName.equals("HL")){
 			reg=HL();
 		} else if(regName.equals("DE")){
@@ -4424,5 +4428,13 @@ public abstract class Z80 extends CPU {
 	
 	public int getInterruptMode(String interrupt) {		
 		return IM();
+	}
+	
+	public void setInterrupt(int value){
+		I(value);
+	}
+	
+	public int getInterrupt(){
+		return I();
 	}
 }

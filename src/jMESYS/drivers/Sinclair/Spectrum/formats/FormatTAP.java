@@ -3,6 +3,7 @@ package jMESYS.drivers.Sinclair.Spectrum.formats;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.io.BufferedInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 import jMESYS.core.cpu.CPU;
@@ -19,6 +20,13 @@ public class FormatTAP extends FileFormat {
 	
 	// file
 	//private BufferedInputStream tapeFile;
+	
+	private boolean loading, stop_loading;
+	private byte[] tape;
+	private int tape_blk;
+	private int tape_pos;
+	private boolean tape_changed = false;
+	private boolean tape_ready = false;
 	
 	public String getExtension() {
 		return strExtension;
@@ -41,12 +49,10 @@ public class FormatTAP extends FileFormat {
         return new String(msg);
     }
 	
-
-
-	@Override
 	public void loadFormat(String name, InputStream is, CPU cpu) throws Exception {
+		System.out.println("Load TAP");
 		
-		// new Method
+		/*
 		BasicTape tape = new BasicTape();
 		tape.setName(name);
 		
@@ -55,7 +61,195 @@ public class FormatTAP extends FileFormat {
 		tape.setSize(tapeBuffer.length);
 		
 		getAllBlocks( tapeBuffer, cpu, tape );
+		*/
 		
+		// new method
+		System.out.println("New TAP Method");
+		//autoload( cpu );
+		load_tape( is );
+		do_load( tape, true, cpu);
+	}
+	
+	private void load_tape(InputStream in) {
+		byte data[] = null;
+		int pos = 0;
+		for(;;) try {
+			byte buf[] = new byte[pos+512];
+			int n = in.read(buf, pos, 512);
+			if(n<512) {
+				if(n<=0) break;
+				byte buf2[] = new byte[pos+n];
+				System.arraycopy(buf, pos, buf2, pos, n);
+				buf = buf2;
+			}
+			if(data!=null)
+				System.arraycopy(data, 0, buf, 0, pos);
+			data = buf; pos += n;
+			//spectrum.tape(data, false);
+			//Thread.yield();
+		} catch(IOException e) {
+			break;
+		}
+		if(data != null){
+			//spectrum.tape(data, true);
+			tape = data; 
+		}
+			
+	}
+	
+	private boolean do_load(byte[] tape, boolean ready, CPU cpu) {
+		System.out.println("--Do Load--");
+		/*if(tape_changed || (keyboard[7]&1)==0) {
+			cpu.f(0);
+			return false;
+		}*/
+
+		int p = tape_pos;
+
+		int ix = cpu.getRegister("IX");
+		int de = cpu.getRegister("DE");
+		int h, l = cpu.getRegister("HL"); h = l>>8 & 0xFF; l &= 0xFF;
+		int a = cpu.getRegister("A");
+		int f = cpu.getRegister("F");
+		int rf = -1;
+
+		if(p == tape_blk) {
+			p += 2;
+			if(tape.length < p) {
+				if(ready) {
+					cpu.popRegister("PC");
+					cpu.F(0x40);
+				}
+				return !ready;
+			}
+			tape_blk = p + (tape[p-2]&0xFF | tape[p-1]<<8&0xFF00);
+			h = 0;
+		}
+
+		for(;;) {
+			if(p == tape_blk) {
+				rf = 0x40;
+				break;
+			}
+			if(p == tape.length) {
+				if(ready)
+					rf = 0x40;
+				break;
+			}
+			l = tape[p++]&0xFF;
+			h ^= l;
+			if(de == 0) {
+				a = h;
+				rf = 0;
+				if(a<1)
+					rf = 0x01;
+				break;
+			}
+			if((f&0x40)==0) {
+				a ^= l;
+				if(a != 0) {
+					rf = 0;
+					break;
+				}
+				f |= 0x40;
+				continue;
+			}
+			if((f&0x01)!=0)
+				//mem(ix, l);
+				cpu.pokeb(ix, l);
+			else {
+				a = cpu.peekb(ix) ^ l;
+				if(a != 0) {
+					rf = 0;
+					break;
+				}
+			}
+			ix = (char)(ix+1);
+			de--;
+		}
+
+		cpu.setRegister("IX", ix);
+		cpu.setRegister("DE", de);
+		cpu.setRegister("HL", h<<8|l);
+		cpu.setRegister("A", a);
+		if(rf>=0) {
+			f = rf;
+			cpu.popRegister("PC");
+		}
+		cpu.F(f);
+		tape_pos = p;
+		return rf<0;
+	}
+	
+	private void autoload(CPU cpu) throws Exception {
+		System.out.println("--AUTOLOAD--");
+		cpu.setRegister("I", 0x3F);
+		int p=16384;
+		do cpu.pokeb(p++, 0); while(p<22528);
+		do cpu.pokeb(p++, 070); while(p<23296);
+		do cpu.pokeb(p++, 0); while(p<65536);
+		cpu.pokew(23732, --p); // P-RAMT
+		p -= 0xA7;
+        
+		// original
+		//System.arraycopy(rom48k, 0x3E08, ram48k[2], p-49152, 0xA8);
+		byte[] memo = cpu.getMem();
+		System.arraycopy(memo, 0x3E08, memo, p-49152, 0xA8);
+		cpu.setMem(memo);
+
+        cpu.pokew(23675, p--); // UDG
+        cpu.pokeb(23608, 0x40); // RASP
+		cpu.pokew(23730, p); // RAMTOP
+		cpu.pokew(23606, 0x3C00); // CHARS
+		cpu.pokeb(p--, 0x3E);
+		cpu.setRegister("SP", p);
+		cpu.pokew(23613, p-2); // ERR-SP
+		cpu.setRegister("IY", 0x5C3A);
+		cpu.setInterruptMode("IM1", 1);
+		// ojo, hay que implementarlo!!!!!
+		//cpu.ei(true);
+
+		cpu.pokew(23631, 0x5CB6); // CHANS
+		
+		// original
+		//System.arraycopy(rom48k, 0x15AF, ram48k[0], 0x1CB6, 0x15);
+		memo = cpu.getMem();
+		System.arraycopy(memo, 0x15AF, memo, 0x1CB6, 0x15);
+		cpu.setMem(memo);
+		
+        //		System.arraycopy(rom48k, 0x15AF, ram, 0x1CB6, 0x15);
+		p = 0x5CB6+0x14;
+		cpu.pokew(23639, p++); // DATAADD
+		cpu.pokew(23635, p); // PROG
+		cpu.pokew(23627, p); // VARS
+		cpu.pokeb(p++, 0x80);
+		cpu.pokew(23641, p); // E-LINE
+		cpu.pokew(p, 0x22EF); cpu.pokew(p+2, 0x0D22); // LOAD ""
+		cpu.pokeb(p+4, 0x80); p += 5;
+		cpu.pokew(23649, p); // WORKSP
+		cpu.pokew(23651, p); // STKBOT
+		cpu.pokew(23653, p); // STKEND
+
+		cpu.pokeb(23693, 070); cpu.pokeb(23695, 070); cpu.pokeb(23624, 070);
+		cpu.pokew(23561, 0x0523);
+
+		cpu.pokeb(23552, 0xFF); cpu.pokeb(23556, 0xFF); // KSTATE
+
+        //Original
+		//System.arraycopy(rom48k, 0x15C6, ram48k[0], 0x1C10, 14);
+		memo = cpu.getMem();
+		System.arraycopy(memo, 0x15C6, memo, 0x1C10, 14);
+		cpu.setMem(memo);
+        
+        //		System.arraycopy(rom48k, 0x15C6, ram, 0x1C10, 14);
+
+        cpu.pokew(23688, 0x1821); // S-POSN
+        cpu.pokeb(23659, 2); // DF-SZ
+		cpu.pokew(23656, 0x5C92); // MEM
+		cpu.pokeb(23611, 0x0C); // FLAGS
+
+		cpu.setRegister("PC", 4788);
+		//au_reset();
 	}
 	
 	private void getAllBlocks(byte[] tapeBuffer, CPU cpu, BasicTape tape) throws Exception {

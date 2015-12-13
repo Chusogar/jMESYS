@@ -23,17 +23,26 @@ public abstract class CPU {
 	public abstract int getMemorySize();
 	public abstract void setMemorySize(int mSize);
 	public abstract void pokeb(int addr, int newByte);
+	public abstract void pokew( int addr, int word );
+	public abstract int peekb( int addr );
+	public abstract int peekw( int addr );
 	
 	// Registers
 	public abstract void setRegister(String regName, int value);
 	public abstract int getRegister(String regName);	
 	public abstract void pushRegister(String regName);
 	public abstract void popRegister(String regName);
+
+	// Flags
+	public abstract int F();
+	public abstract void F( int bite );
 	
 	// Interrupts
 	public abstract void interruptFF(String iffName, boolean value);
 	public abstract boolean interruptFF(String iffName);	
 	public abstract void setInterruptMode(String interrupt, int value);
+	public abstract void setInterrupt(int value);
+	public abstract int getInterrupt();
 	public abstract int getInterruptMode(String iffName);
 	public abstract void cycle();
 	
