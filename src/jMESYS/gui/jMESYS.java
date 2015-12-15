@@ -17,6 +17,7 @@ import java.awt.Dimension;
 import java.awt.Event;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -508,8 +509,10 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	                   e.printStackTrace();
 	                }*/
 	                JPanel panel = new JPanel();
-	                panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-	                //panel.setLayout(new BorderLayout());
+	                JPanel panTotal = new JPanel();
+	                panTotal.setLayout(new BorderLayout());
+	                //panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+	                panel.setLayout(new GridLayout(1,2));
 	                panel.setOpaque(true);
 	                /*JTextArea textArea = new JTextArea(15, 50);
 	                textArea.setWrapStyleWord(true);
@@ -527,6 +530,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	        		
 	                //JScrollPane scroller = new JScrollPane(textArea);
 	                JScrollPane scroller = new JScrollPane(tree);
+	                scroller.setSize(350, 250);
 	                scroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 	                scroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 	                JPanel inputpanel = new JPanel();
@@ -536,15 +540,18 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	                /*DefaultCaret caret = (DefaultCaret) textArea.getCaret();
 	                caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);*/
 	                panel.add(scroller);
+	                
 	                inputpanel.add(input);
 	                inputpanel.add(button);
+	                
 	                
 	                panScreen = new JPanel();
 	                panScreen.setPreferredSize( new Dimension(getDisplay().getWidth(), getDisplay().getHeight()) );
 	                Image imgScreen = panScreen.createImage(getDisplay().getWidth(), getDisplay().getHeight());
 	                panel.add(panScreen);
 	                
-	                panel.add(inputpanel);
+	                panTotal.add(panel, BorderLayout.CENTER);
+	                panTotal.add(inputpanel, BorderLayout.SOUTH);
 	                /*frame.getContentPane().add(BorderLayout.CENTER, panel);
 	                frame.pack();
 	                frame.setLocationByPlatform(true);
@@ -553,9 +560,12 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	                input.requestFocus();
 	                
 	                JDialog frame = new JDialog(this, "Remote Site", true);
-	                frame.getContentPane().add(panel);
+	                //frame.setSize(787, 362);
+	                frame.getContentPane().add(panTotal);
 	        		frame.pack();
+	        		frame.setSize(650, 268);
 	        		frame.setVisible(true);
+	        		//frame.setSize(787, 362);
 	        		System.out.println("WIDTH: "+frame.getWidth());
 	        		System.out.println("HEIGHT: "+frame.getHeight());
 	}
