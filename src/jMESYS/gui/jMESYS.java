@@ -17,6 +17,7 @@ import java.awt.Dimension;
 import java.awt.Event;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
@@ -69,6 +70,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	private JTextField input;
     //private String addrSiteWOS="http://localhost:8080/WOSserver/pub/sinclair/games/";
 	private String addrSiteWOS="http://www.worldofspectrum.org/pub/sinclair/games/";
+    private JPanel panScreen;
 	
 	public jMESYSDisplay getDisplay() {
 		return display;
@@ -198,8 +200,13 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		System.out.println("Resizing Screen...");
 		this.setSize(getDisplay().FRAME_WIDTH*getDisplay().pixelScale+((getDisplay().FRAME_MARGINH)*2)+16, getDisplay().FRAME_HEIGHT*getDisplay().pixelScale+((getDisplay().FRAME_MARGINV)*2)+38+21);
 		//System.out.println("IMAGENTV: "+t.getDisplay().imagenTV);
-		getDisplay().imagenTV= createImage(getDisplay().FRAME_WIDTH*getDisplay().pixelScale+((getDisplay().FRAME_MARGINH)*2), getDisplay().FRAME_HEIGHT*getDisplay().pixelScale+((getDisplay().FRAME_MARGINV)*2));
+		int wi=getDisplay().FRAME_WIDTH*getDisplay().pixelScale;
+		int he=getDisplay().FRAME_HEIGHT*getDisplay().pixelScale;
 		
+		getDisplay().imagenTV= createImage(wi, he);
+		
+		System.out.println("Width: "+wi);
+		System.out.println("Height: "+he);
 		//t.getDisplay().loadScreen("D:/workspace/jMESYS/bin/screens/WorldSeriesBaseball.scr");
 		getDisplay().initScreen();
 	}
@@ -390,7 +397,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			try {
 				if (fileDialog == null)
 					//fileDialog = new jMESYSFileLoader(getDisplay().getWidth(), getDisplay().getHeight(), getComputer().getSupportedFileFormats(), getDisplay());
-					fileDialog = new jMESYSFileLoader(256, 192, getComputer().getSupportedFileFormats(), getDisplay());
+					fileDialog = new jMESYSFileLoader(276, 213, getComputer().getSupportedFileFormats(), getDisplay());
 			} catch (Exception e) {
 				e.printStackTrace(System.out);
 			}
@@ -502,6 +509,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	                }*/
 	                JPanel panel = new JPanel();
 	                panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+	                //panel.setLayout(new BorderLayout());
 	                panel.setOpaque(true);
 	                /*JTextArea textArea = new JTextArea(15, 50);
 	                textArea.setWrapStyleWord(true);
@@ -530,6 +538,12 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	                panel.add(scroller);
 	                inputpanel.add(input);
 	                inputpanel.add(button);
+	                
+	                panScreen = new JPanel();
+	                panScreen.setPreferredSize( new Dimension(getDisplay().getWidth(), getDisplay().getHeight()) );
+	                Image imgScreen = panScreen.createImage(getDisplay().getWidth(), getDisplay().getHeight());
+	                panel.add(panScreen);
+	                
 	                panel.add(inputpanel);
 	                /*frame.getContentPane().add(BorderLayout.CENTER, panel);
 	                frame.pack();
@@ -539,9 +553,11 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	                input.requestFocus();
 	                
 	                JDialog frame = new JDialog(this, "Remote Site", true);
-	        		frame.getContentPane().add(panel);
+	                frame.getContentPane().add(panel);
 	        		frame.pack();
 	        		frame.setVisible(true);
+	        		System.out.println("WIDTH: "+frame.getWidth());
+	        		System.out.println("HEIGHT: "+frame.getHeight());
 	}
 
 	private void getBranch(String addrWOS, DefaultMutableTreeNode parentNode) {
@@ -626,6 +642,8 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 				rf.setName( strFile );
 				
 				rf.setPath("");
+				//xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());
+				xZ80.getScreen("/a.z80", wos.getZIPcontents(rf), getDisplay(), panScreen.getGraphics());
 				xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());
 			} catch (Exception e) {
 				e.printStackTrace(System.out);

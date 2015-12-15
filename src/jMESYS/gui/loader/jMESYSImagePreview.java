@@ -25,8 +25,8 @@ import javax.swing.JFileChooser;
 public class jMESYSImagePreview extends JComponent implements PropertyChangeListener {
 	
 	private Image icon;
-	private int WIDTH = 150;
-	private int HEIGHT = 100;
+	private int WIDTH = 276;
+	private int HEIGHT = 213;
 	private FileFormat[] fileFormats = null;
 	private jMESYSDisplay disp = null;
 	private jMESYSFileLoader fc = null;
@@ -34,10 +34,11 @@ public class jMESYSImagePreview extends JComponent implements PropertyChangeList
 	public jMESYSImagePreview(jMESYSFileLoader fcx, int width, int height, FileFormat[] ff, jMESYSDisplay display){
 		fileFormats = ff;
 		fcx.addPropertyChangeListener(this);
-		WIDTH = width;
-		HEIGHT = height;
+		//WIDTH = width;
+		//HEIGHT = height;
 		disp = display;
-		
+		//System.out.println("WIDTH: "+WIDTH);
+		//System.out.println("HEIGHT: "+HEIGHT);
 		setPreferredSize(new Dimension(WIDTH, HEIGHT));
 	}
 	

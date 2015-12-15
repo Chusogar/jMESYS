@@ -58,8 +58,8 @@ public abstract class jMESYSDisplay extends JComponent {
 		//public static int ATR_START=0;
 		public static int FRAME_WIDTH=256; 
 		public static int FRAME_HEIGHT=192;
-		public static int FRAME_MARGINH=0;
-		public static int FRAME_MARGINV=0;
+		public static int FRAME_MARGINH=10;
+		public static int FRAME_MARGINV=10;
 		
 		public int[] currentPalette = null;
 		public boolean bwPalette = false;
@@ -77,8 +77,11 @@ public abstract class jMESYSDisplay extends JComponent {
 		// abstract methods
 		public abstract void doPaintWholeScreen(Graphics gi);
 		public abstract Image getScreenImage();
+		public abstract Image getBorderImage();
 		public abstract void initScreen();
 		public abstract int[] getDefaultPalette();
+		public abstract int getTotalWidth();
+		public abstract int getTotalHeight();
 		
 		public int[] getPalette() {
 			return currentPalette;
@@ -154,8 +157,11 @@ public abstract class jMESYSDisplay extends JComponent {
 		
 	    public void paintComponent(Graphics g) {
 	    	//System.out.println("paintComponent jMESYSDisplay");
-	        g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
-	    	//g.drawImage(imgScreen, FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
+	    	//g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, getTotalWidth(), getTotalHeight(), null);
+	    	
+	    	g.drawImage(getBorderImage(), 0, 0, (FRAME_WIDTH*pixelScale)+(FRAME_MARGINH*2), (FRAME_HEIGHT*pixelScale)+(FRAME_MARGINV*2), null);
+	    	//g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
+	    	g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
 		}
 	    		
 		
