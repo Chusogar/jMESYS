@@ -10,6 +10,7 @@ import jMESYS.drivers.Sinclair.Spectrum.sites.WOSsite;
 import jMESYS.gui.jMESYSDisplay;
 import jMESYS.gui.loader.jMESYSFileLoader;
 import jMESYS.gui.loader.jMESYSFileZIP;
+import jMESYS.gui.loader.jMESYSRemoteFileLoader;
 
 import java.awt.AWTEvent;
 import java.awt.BorderLayout;
@@ -54,7 +55,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreePath;
 
 
-public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnable, ActionListener, TreeSelectionListener{
+public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnable, ActionListener {
 	
 	private jMESYSDisplay display = null;
 	private Spectrum48k spectrum = null;
@@ -474,7 +475,28 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			System.out.println("Playing Tape");
 		}  else if (ev.getActionCommand().equals("Remote WOS")) {
 			System.out.println("Remote World of Spectrum Site");
-			createWOSFrame();
+			//createWOSFrame();
+			try {
+				jMESYSRemoteFileLoader remoteWOS = new jMESYSRemoteFileLoader(this, getComputer().getSupportedFileFormats(), getDisplay());
+				int option = remoteWOS.showOpenDialog();
+				// check and load
+				//System.out.println("Load..."+option);
+				if (option != 0){
+					WOSsite wos = new WOSsite();
+					FileFormat[] ff = getComputer().getSupportedFileFormats();
+					FileFormat xZ80 = ff[2];
+					//getComputer().reset();
+					RemoteFile rf = new RemoteFile();
+					rf.setName( remoteWOS.getFiletoLoad() );
+					
+					rf.setPath("");
+					//xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());
+					//xZ80.getScreen("/a.z80", wos.getZIPcontents(rf), display, panScreen.getGraphics());
+					xZ80.loadFormat(remoteWOS.getFiletoLoad(), new FileInputStream(remoteWOS.getFiletoLoad()), getComputer());
+				}
+			} catch (Exception e){
+				e.printStackTrace(System.out);
+			}
 		}
 		
 		
@@ -496,95 +518,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		}
 	}
 
-	private void createWOSFrame() {
-		
-		
 	
-	                /*JFrame frame = new JFrame("Test");
-	                frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-	                try 
-	                {
-	                   UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-	                } catch (Exception e) {
-	                   e.printStackTrace();
-	                }*/
-	                JPanel panel = new JPanel();
-	                JPanel panTotal = new JPanel();
-	                panTotal.setLayout(new BorderLayout());
-	                //panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-	                panel.setLayout(new GridLayout(1,2));
-	                panel.setOpaque(true);
-	                /*JTextArea textArea = new JTextArea(15, 50);
-	                textArea.setWrapStyleWord(true);
-	                textArea.setEditable(false);
-	                textArea.setFont(Font.getFont(Font.SANS_SERIF));*/
-	                DefaultMutableTreeNode root = new DefaultMutableTreeNode("/");
-	                tree = new JTree(root);
-	                //tree.addTreeSelectionListener(this);
-	                
-	        		//getBranch("http://localhost:8080/WOSserver/pub/sinclair/games/", root);
-	                getBranch("http://www.worldofspectrum.org/pub/sinclair/games/", root);
-	        		
-	        		tree.expandPath(new TreePath(root.getPath()));
-	        		tree.addTreeSelectionListener(this);
-	        		
-	                //JScrollPane scroller = new JScrollPane(textArea);
-	                JScrollPane scroller = new JScrollPane(tree);
-	                scroller.setSize(350, 250);
-	                scroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
-	                scroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-	                JPanel inputpanel = new JPanel();
-	                inputpanel.setLayout(new FlowLayout());
-	                input = new JTextField(20);
-	                JButton button = new JButton("Enter");
-	                /*DefaultCaret caret = (DefaultCaret) textArea.getCaret();
-	                caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);*/
-	                panel.add(scroller);
-	                
-	                inputpanel.add(input);
-	                inputpanel.add(button);
-	                
-	                
-	                panScreen = new JPanel();
-	                panScreen.setPreferredSize( new Dimension(getDisplay().getWidth(), getDisplay().getHeight()) );
-	                Image imgScreen = panScreen.createImage(getDisplay().getWidth(), getDisplay().getHeight());
-	                panel.add(panScreen);
-	                
-	                panTotal.add(panel, BorderLayout.CENTER);
-	                panTotal.add(inputpanel, BorderLayout.SOUTH);
-	                /*frame.getContentPane().add(BorderLayout.CENTER, panel);
-	                frame.pack();
-	                frame.setLocationByPlatform(true);
-	                frame.setVisible(true);
-	                frame.setResizable(false);*/
-	                input.requestFocus();
-	                
-	                JDialog frame = new JDialog(this, "Remote Site", true);
-	                //frame.setSize(787, 362);
-	                frame.getContentPane().add(panTotal);
-	        		frame.pack();
-	        		frame.setSize(650, 268);
-	        		frame.setVisible(true);
-	        		//frame.setSize(787, 362);
-	        		System.out.println("WIDTH: "+frame.getWidth());
-	        		System.out.println("HEIGHT: "+frame.getHeight());
-	}
-
-	private void getBranch(String addrWOS, DefaultMutableTreeNode parentNode) {
-		WOSsite site = new WOSsite();
-        site.setRemoteAddress( addrWOS );
-		Vector v = site.readRemotePage();
-		
-		int numNodes = v.size();
-		for (int i=0 ; i<numNodes ; i++) {
-			RemoteFile rf = (RemoteFile) v.elementAt(i);
-			DefaultMutableTreeNode nodAct = new DefaultMutableTreeNode(rf.getName());
-			parentNode.add(nodAct);
-		}
-		
-		tree.expandPath(new TreePath(parentNode.getPath()));
-	}
-
 	private void openLoadDialog() {
 		try {
 			if (fileDialog == null)
@@ -612,52 +546,5 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		}
 	}
 
-	public void valueChanged(TreeSelectionEvent event) {
-		System.out.println("Click tree");
-		tree.expandPath(event.getPath());
-        input.setText(event.getPath().toString());
-        
-        String completePath = addrSiteWOS+event.getPath().getLastPathComponent().toString();
-        String partialPath = addrSiteWOS;
-        TreePath tp = event.getPath();
-        String strFile = addrSiteWOS;
-        
-        int numPath = tp.getPathCount();
-        for (int i=0 ; i<numPath ; i++){
-        	strFile += (tp.getPath()[i]).toString();
-        }
-        
-        
-        System.out.println("CompletePath: "+completePath);
-        System.out.println("PartialPath: "+partialPath);
-        System.out.println("eventPath: "+tp.toString());
-        System.out.println("strFile: "+strFile);
-        
-        if (event.getPath().getLastPathComponent().toString().endsWith("/")){
-        	System.out.println("Directorio "+addrSiteWOS+event.getPath().getLastPathComponent().toString());
-        	getBranch(completePath, 
-        			(DefaultMutableTreeNode)((JTree)event.getSource()).getLastSelectedPathComponent());
-        	
-        } else {
-        	System.out.println("Fichero");
-        	
-        	try {
-				// load and unzipped remote file
-				FileFormat[] ff = getComputer().getSupportedFileFormats();
-				WOSsite wos = new WOSsite();
-				
-				FileFormat xZ80 = ff[2];
-				getComputer().reset();
-				RemoteFile rf = new RemoteFile();
-				rf.setName( strFile );
-				
-				rf.setPath("");
-				//xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());
-				xZ80.getScreen("/a.z80", wos.getZIPcontents(rf), getDisplay(), panScreen.getGraphics());
-				xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());
-			} catch (Exception e) {
-				e.printStackTrace(System.out);
-			}
-        }
-	}
+	
 }
