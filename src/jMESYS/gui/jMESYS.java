@@ -475,24 +475,40 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			System.out.println("Playing Tape");
 		}  else if (ev.getActionCommand().equals("Remote WOS")) {
 			System.out.println("Remote World of Spectrum Site");
-			//createWOSFrame();
+			
 			try {
 				jMESYSRemoteFileLoader remoteWOS = new jMESYSRemoteFileLoader(this, getComputer().getSupportedFileFormats(), getDisplay());
 				int option = remoteWOS.showOpenDialog();
-				// check and load
-				//System.out.println("Load..."+option);
+				
 				if (option != 0){
+					
 					WOSsite wos = new WOSsite();
 					FileFormat[] ff = getComputer().getSupportedFileFormats();
-					FileFormat xZ80 = ff[2];
-					//getComputer().reset();
+					int countFormats = ff.length;
+					
+					FileFormat xZ80 = null;
+					
 					RemoteFile rf = new RemoteFile();
 					rf.setName( remoteWOS.getFiletoLoad() );
 					
 					rf.setPath("");
 					//xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());
 					//xZ80.getScreen("/a.z80", wos.getZIPcontents(rf), display, panScreen.getGraphics());
-					xZ80.loadFormat(remoteWOS.getFiletoLoad(), new FileInputStream(remoteWOS.getFiletoLoad()), getComputer());
+					InputStream is = wos.getZIPcontents(rf);
+					
+					//System.out.println("Buscamos "+rf.getExtension());
+					
+					for (int i=0 ; i<countFormats ; i++){
+						//System.out.println("Formato actual "+ff[i].getExtension().toUpperCase());
+						if (("."+rf.getExtension().toUpperCase()).equals(ff[i].getExtension().toUpperCase())){
+							//System.out.println("Formato Encontrado!");
+							xZ80 = ff[i];
+						}
+					}
+					
+					//xZ80.loadFormat(remoteWOS.getFiletoLoad(), new FileInputStream(remoteWOS.getFiletoLoad()), getComputer());
+					getComputer().reset();
+					xZ80.loadFormat("/a."+rf.getExtension(), is, getComputer());
 				}
 			} catch (Exception e){
 				e.printStackTrace(System.out);
