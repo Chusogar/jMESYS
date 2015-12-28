@@ -103,8 +103,9 @@ public abstract class CPU {
 	    System.out.println("File: " + name);
 	    InputStream result;
 	    try {
-	    	System.out.println(new URL(name));
-	      result = new URL(name).openStream();
+	    	//System.out.println(new URL(name));
+	      //result = new URL(name).openStream();
+	    	result = CPU.class.getResourceAsStream(name);
 	    } catch(Exception e) {
 //	      e.printStackTrace();
 	      result = new FileInputStream(name);

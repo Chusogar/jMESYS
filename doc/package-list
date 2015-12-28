@@ -1,0 +1,13 @@
+jMESYS.core.cpu
+jMESYS.core.cpu.z80core
+jMESYS.core.sound
+jMESYS.core.util
+jMESYS.drivers
+jMESYS.drivers.Sinclair.Spectrum
+jMESYS.drivers.Sinclair.Spectrum.formats
+jMESYS.drivers.Sinclair.Spectrum.formats.tape
+jMESYS.drivers.Sinclair.Spectrum.sites
+jMESYS.files
+jMESYS.files.tape
+jMESYS.gui
+jMESYS.gui.loader

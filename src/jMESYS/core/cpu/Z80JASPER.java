@@ -13,7 +13,7 @@ package jMESYS.core.cpu;
  * @see Spectrum
  */
 
-public abstract class Z80 extends CPU {
+public abstract class Z80JASPER extends CPU {
 	
 	int numMax=10000;
 	int count=0;
@@ -28,7 +28,7 @@ public abstract class Z80 extends CPU {
 		isHalted=false;
 	}
 
-	public Z80( double clockFrequencyInMHz ) {
+	public Z80JASPER( double clockFrequencyInMHz ) {
 		super();
 		tstatesPerInterrupt = (int) ((clockFrequencyInMHz * 1e6) / 50);
 		setMem(mem);

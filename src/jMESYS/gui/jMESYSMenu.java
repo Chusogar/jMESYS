@@ -66,6 +66,11 @@ public class jMESYSMenu {
 	           
 	        }
 		   }
+		    
+		    // Menu Extras
+		    MenuItem menuPoke = new MenuItem("Poke");
+		    menuPoke.addActionListener(t);
+		    menuExtra.add(menuPoke);
 		   
 		    // Menu Settings
 		    Menu mDisplay = new Menu("Display");

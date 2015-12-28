@@ -1,0 +1,1 @@
+First Beta version. Includes a complete dictionary with more than 16.000 entries. It needs JSesh.

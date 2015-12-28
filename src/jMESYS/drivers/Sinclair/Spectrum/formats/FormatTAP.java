@@ -92,7 +92,8 @@ public class FormatTAP extends FileFormat {
 		}
 		if(data != null){
 			//spectrum.tape(data, true);
-			tape = data; 
+			tape = data;
+			System.out.println("DATA: "+tape);
 		}
 			
 	}

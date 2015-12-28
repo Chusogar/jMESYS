@@ -1,0 +1,13 @@
+# If you want a particular destination directory for the application, uncomment
+# DESTDIR (and modify if necessary) 
+DESTDIR=/
+
+# The directory where the IzPack installer builder is installed
+#IZPACK=/home/rosmord/IzPack
+IZPACK=./resources/tools/izpack-standalone-compiler-3.7.2.jar
+
+# The path for the mac application bundler 
+JARBUNDLER=./resources/tools/jarbundler-1.8.1.jar
+
+# The argument for using the netbeans profiler
+#PROFILING_ARGS=-agentpath:/usr/local/netbeans-5.0/profiler1/lib/deployed/jdk15/linux/libprofilerinterface.so=/usr/local/netbeans-5.0/profiler1/lib,5140

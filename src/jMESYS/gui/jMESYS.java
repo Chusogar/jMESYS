@@ -200,7 +200,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	 
 	private void resizeScreen() {
 		System.out.println("Resizing Screen...");
-		this.setSize(getDisplay().FRAME_WIDTH*getDisplay().pixelScale+((getDisplay().FRAME_MARGINH)*2)+16, getDisplay().FRAME_HEIGHT*getDisplay().pixelScale+((getDisplay().FRAME_MARGINV)*2)+38+21);
+		this.setSize(getDisplay().FRAME_WIDTH*getDisplay().pixelScale+((getDisplay().FRAME_MARGINH)*2)+16, getDisplay().FRAME_HEIGHT*getDisplay().pixelScale+((getDisplay().FRAME_MARGINV)*2)+38+20);
 		//System.out.println("IMAGENTV: "+t.getDisplay().imagenTV);
 		int wi=getDisplay().FRAME_WIDTH*getDisplay().pixelScale;
 		int he=getDisplay().FRAME_HEIGHT*getDisplay().pixelScale;
@@ -425,7 +425,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			//openLoadDialog();	
 			try {
 				// load and unzipped remote file
-				FileFormat[] ff = getComputer().getSupportedFileFormats();
+				/*FileFormat[] ff = getComputer().getSupportedFileFormats();
 				WOSsite wos = new WOSsite();
 				
 				FileFormat xZ80 = ff[2];
@@ -433,7 +433,8 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 				RemoteFile rf = new RemoteFile();
 				rf.setName("SpiritOfNinjaThe.z80.zip");
 				rf.setPath("http://www.worldofspectrum.org/pub/sinclair/games/s");
-				xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());
+				xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());*/
+				getComputer().loadTapeDemo();
 			} catch (Exception e) {
 				e.printStackTrace(System.out);
 			}
@@ -468,6 +469,14 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		}  else if (ev.getActionCommand().equals("Size X 2")) {
 			display.pixelScale=2;
 			this.resizeScreen();
+		} else if (ev.getActionCommand().equals("Poke")) {
+			jMESYSPokeDialog dialog = new jMESYSPokeDialog(this, "Poke", true);
+			int option = dialog.showOpenDialog();
+			System.out.println("Option="+dialog.getOption());
+			if (dialog.getOption() == 1){
+				getComputer().pokeb(Integer.parseInt(dialog.getAddress()), Integer.parseInt(dialog.getValue()));
+			}
+			
 		}  else if (ev.getActionCommand().equals("Size X 3")) {
 			display.pixelScale=3;
 			this.resizeScreen();
@@ -509,7 +518,8 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 					//xZ80.loadFormat(remoteWOS.getFiletoLoad(), new FileInputStream(remoteWOS.getFiletoLoad()), getComputer());
 					getComputer().reset();
 					xZ80.loadFormat("/a."+rf.getExtension(), is, getComputer());
-				}
+				} 
+				
 			} catch (Exception e){
 				e.printStackTrace(System.out);
 			}

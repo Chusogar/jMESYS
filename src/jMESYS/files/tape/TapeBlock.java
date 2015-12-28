@@ -58,8 +58,15 @@ public class TapeBlock {
 				toStr+
 				", size="+
 				size+" bytes"
+				//+", Content="
 				//+", Content="+new String(content)
 				;
+		/*if (typeBlock==0){
+			int c=content.length;
+			for (int i=0 ; i<c ; i++){
+				str += Byte.toString( content[i] )+" ";
+			}
+		}*/
 		
 		return str;
 	}

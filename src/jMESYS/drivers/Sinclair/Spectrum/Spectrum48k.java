@@ -1,7 +1,7 @@
 package jMESYS.drivers.Sinclair.Spectrum;
 
 import jMESYS.core.cpu.CPU;
-import jMESYS.core.cpu.Z80;
+import jMESYS.core.cpu.Z80JASPER;
 import jMESYS.core.sound.SoundPlayer;
 import jMESYS.core.sound.SoundUtil;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
@@ -26,7 +26,7 @@ import java.util.zip.ZipInputStream;
 
 
 
-public class Spectrum48k extends Z80 {
+public class Spectrum48k extends Z80JASPER {
 	
 	int numInts = 0;
 	protected int cycles = 0;
@@ -38,6 +38,9 @@ public class Spectrum48k extends Z80 {
 	
 	/** Handle TAP **/
 	private int ear = 0;
+	private byte[] tapDemo = new byte[] {66, 65, 84, 84, 76, 69, 32, 32, 32, 32, -53, 1, 0, 0, -42, 0, 22};
+	int tapPos = 0;
+	int tapMax = tapDemo.length;
 	
 	/** Handle screen **/
 	private SpectrumDisplay display;
@@ -96,7 +99,7 @@ public class Spectrum48k extends Z80 {
 		// cargamos la ROM
 		//System.out.println("MEMO: "+mem.length);
 		//loadROM("D:/workspace/jMESYSalpha/bin/bios/Sinclair/Spectrum/ShadowOfTheUnicorn.rom", 0, 16384, false);
-		loadROM("D:/workspace/jMESYSalpha/bin/bios/Sinclair/Spectrum/spectrum.rom", 0, 16384, false);
+		loadROM("/bios/Sinclair/Spectrum/spectrum.rom", 0, 16384, false);
 		/*System.out.println("MEMO: "+mem[0]);
 		for (int i=0;i<10;i++){
 			System.out.print(mem[i]+" ");
@@ -292,7 +295,94 @@ public class Spectrum48k extends Z80 {
 		 return (res | (ear & 0x40));
 	}
 	
-	
+	public void loadTapeDemo() {
+		
+		/*if(tape_changed || (keyboard[7]&1)==0) {
+			cpu.f(0);
+			return false;
+		}*/
+
+		int p = 0;
+
+		int ix = getRegister("IX");
+		int de = getRegister("DE"); //cpu.de();
+		int h, l = getRegister("HL");; h = l>>8 & 0xFF; l &= 0xFF;
+		int a = getRegister("A"); //cpu.a();
+		int f = getRegister("F"); //cpu.f();
+		int rf = -1;
+		
+		int tape_blk=0;
+
+		if(p == tape_blk) {
+			p += 2;
+			if(tapMax < p) {
+				if(true) {
+					poppc(); //cpu.pc(cpu.pop());
+					setRegister ("F", 0x40); //cpu.f(cpu.FZ);
+				}
+				//return !ready;
+			}
+			tape_blk = p + (tapDemo[p-2]&0xFF | tapDemo[p-1]<<8&0xFF00);
+			h = 0;
+		}
+
+		for(;;) {
+			if(p == tape_blk) {
+				rf = 0x40; //cpu.FZ;
+				break;
+			}
+			if(p == tapDemo.length) {
+				if(true)
+					rf = 0x40; //cpu.FZ;
+				break;
+			}
+			l = tapDemo[p++]&0xFF;
+			h ^= l;
+			if(de == 0) {
+				a = h;
+				rf = 0;
+				if(a<1)
+					rf = 0x01; //cpu.FC;
+				break;
+			}
+			if((f&0x40)==0) {
+				a ^= l;
+				if(a != 0) {
+					rf = 0;
+					break;
+				}
+				f |= 0x40;
+				continue;
+			}
+			if((f&0x01)!=0)
+				mem[ix]=(byte)(l);
+			else {
+				a = mem[ix] ^ l;
+				if(a != 0) {
+					rf = 0;
+					break;
+				}
+			}
+			ix = (char)(ix+1);
+			de--;
+		}
+
+		setRegister("IX", ix); //cpu.ix(ix);
+		setRegister("DE", de); //cpu.de(de);
+		setRegister("HL", h<<8|l); //cpu.hl(h<<8|l);
+		setRegister("A", a); //cpu.a(a);
+		if(rf>=0) {
+			f = rf;
+			poppc(); //cpu.pc(cpu.pop());
+		}
+		setRegister("F", f); //cpu.f(f);
+		
+		//tape_pos = p;
+		//return rf<0;
+		/*for (int i=0; i<tapMax ; i++){
+			outb(0xFF, tapDemo[i], 1);
+		}*/
+	}
 	
 	public void outb( int port, int outByte, int tstates ) {
 		//System.out.println("Out Port: "+port+" byte: "+outByte);
@@ -306,7 +396,7 @@ public class Spectrum48k extends Z80 {
 		if (port == 0xFF){
 			int valor=soundByte;
 			ear = ((valor & 0x10) != 0 ? 0xFF : 0xBF);
-			//System.out.println("Out Port: "+port+" byte: "+outByte);
+			System.out.println("Out Port: "+port+" byte: "+outByte);
 		}
 		
 	}
