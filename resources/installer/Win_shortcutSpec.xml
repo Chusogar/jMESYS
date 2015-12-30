@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+
+<shortcuts>
+  <SkipIfNotSupported/>
+  
+  <programGroup defaultName="jMESYS" location="applications"/>
+  
+  <defaultCurrentUser/>
+  
+  <shortcut
+     name="jMESYS"
+     programGroup="yes"
+     desktop="yes"
+     applications="yes"
+     startMenu="yes"
+     startup="yes"
+     target="$INSTALL_PATH\libs\jMESYS.jar"
+     description="jMESYS Java Multiple Emulator SYStem"
+	 iconFile="$INSTALL_PATH\images\jMESYS.ico"
+	 workingDirectory="$INSTALL_PATH\libs\"
+     >
+
+  
+     <createForPack name="Base"/>
+     
+     
+   </shortcut>
+   
+</shortcuts>

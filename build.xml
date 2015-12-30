@@ -89,8 +89,16 @@
 		<copy todir="build/classes/jMESYSResources">
 			<fileset dir="resources">
 				<include name="userdoc/**" />
+			</fileset>			
+		</copy>
+		
+		<mkdir dir="build/classes/jMESYSResources/images" />
+		<copy todir="build/classes/jMESYSResources">
+			<fileset dir="resources">
+				<include name="images/**" />
 			</fileset>
 		</copy>
+		
 		<!-- mkdir dir="build" -->
 		<mkdir dir="${jMESYSCLASSES}" />
 		<!-- <copy todir="build/classes/languages">

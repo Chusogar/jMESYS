@@ -23,7 +23,10 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
+import java.awt.image.BufferedImageOp;
+import java.awt.image.ConvolveOp;
 import java.awt.image.IndexColorModel;
+import java.awt.image.Kernel;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -63,7 +66,7 @@ public abstract class jMESYSDisplay extends JComponent {
 		
 		public int[] currentPalette = null;
 		public boolean bwPalette = false;
-				
+		public boolean blur = false;
 		
 		/*protected static byte[] palcolor(int m) {
 			byte a[] = new byte[16];
@@ -161,11 +164,30 @@ public abstract class jMESYSDisplay extends JComponent {
 	    	
 	    	g.drawImage(getBorderImage(), 0, 0, (FRAME_WIDTH*pixelScale)+(FRAME_MARGINH*2), (FRAME_HEIGHT*pixelScale)+(FRAME_MARGINV*2), null);
 	    	//g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
-	    	g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
+	    	g.drawImage(getFilteredScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
 		}
 	    		
 		
 		
+		private Image getFilteredScreenImage() {
+			BufferedImage OutImage;
+			
+			if (blur) {
+				float[] matrix = {
+			        0.1f, 0.1f, 0.1f, 
+			        0.1f, 0.1f, 0.1f, 
+			        0.1f, 0.1f, 0.1f, 
+			    };
+				
+				BufferedImageOp op = new ConvolveOp( new Kernel(3, 3, matrix) );
+				BufferedImage destImage=new BufferedImage(FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, BufferedImage.TYPE_INT_ARGB);
+				OutImage = op.filter( (BufferedImage)getScreenImage(), destImage);
+			} else {
+				OutImage = (BufferedImage) getScreenImage();
+			}
+			
+			return OutImage;
+		}
 		public Vector readContents(String address) throws IOException
 	    {
 	        Vector v=new Vector();
@@ -238,6 +260,9 @@ public abstract class jMESYSDisplay extends JComponent {
 			}
 			
 			return listado;
+		}
+		public void setBlur(boolean b) {
+			blur = b;
 		}
 		
 		/*public void readWosPage (String address) throws Exception {

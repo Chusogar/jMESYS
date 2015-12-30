@@ -78,8 +78,17 @@ public class jMESYSMenu {
 		    crtcColor.addActionListener(t);
 		    MenuItem crtcBW = new MenuItem("Black and White");
 		    crtcBW.addActionListener(t);
+		    
+		    MenuItem ctrcBlurOFF  = new MenuItem("Blur Off");
+		    ctrcBlurOFF.addActionListener(t);
+		    MenuItem ctrcBlurON  = new MenuItem("Blur On");
+		    ctrcBlurON.addActionListener(t);
+		    
 		    mDisplay.add(crtcColor);
 		    mDisplay.add(crtcBW);
+		    mDisplay.addSeparator();
+		    mDisplay.add(ctrcBlurOFF);
+		    mDisplay.add(ctrcBlurON);
 		    menuSet.add(mDisplay);
 		    
 		    mDisplay.addSeparator();

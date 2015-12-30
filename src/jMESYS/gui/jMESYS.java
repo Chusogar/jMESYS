@@ -122,7 +122,12 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 	 }
 
 	 public static void main(String[] args) {
+		 
 		jMESYS t = new jMESYS();
+		
+		// splash screen
+	    jMESYSSplashScreen splash = new jMESYSSplashScreen(t, "jMESYS", true);
+	    splash.display();
 				
 		t.setTitle( Version.getVersion() );
 		System.out.println("FRAME_MARGINH="+t.getDisplay().FRAME_MARGINH);
@@ -162,6 +167,9 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			t.getMenuBar().getMenu(i).addActionListener(t);
 			System.out.println(t.getMenuBar().getMenu(i).getActionCommand());
 		}
+		
+		//t.addWindowListener(new SplashCloser(splash));
+		splash.closeSplash();
 		
 		//t.getDisplay().loadScreen("D:/workspace/jMESYS/bin/screens/WorldSeriesBasketball.scr");
 		t.getComputer().execute();
@@ -444,6 +452,12 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		} else if (ev.getActionCommand().equals("Black and White")) {
 			System.out.println("set Black and White Palette");
 			display.setBWPalette();
+		} else if (ev.getActionCommand().equals("Blur Off")) {
+			System.out.println("set Blur OFF");
+			display.setBlur(false);
+		} else if (ev.getActionCommand().equals("Blur On")) {
+			System.out.println("set Blur ON");
+			display.setBlur(true);
 		} else if (ev.getActionCommand().equals("Exit")) {
 			System.exit(0);
 		} else if (ev.getActionCommand().equals("All Formats")) {

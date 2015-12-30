@@ -1,6 +1,6 @@
 <!-- ?xml version="1.0" encoding="iso-8859-1" standalone="yes" ?-->
 <!-- 
-    Installation for OpenGlyph
+    Installation for jMESYS
 -->
 <installation version="1.0">
 	<!-- 
@@ -8,13 +8,13 @@
         The meaning of the tags should be natural ...
     -->
 	<info>
-		<appname>OpenGlyph</appname>
-		<appversion>@openglyphVERSION@</appversion>
+		<appname>jMESYS</appname>
+		<appversion>@jMESYSVERSION@</appversion>
 		<authors>
 			<author name="Jesús Angel García Sánchez (Chuso)" email="chusogar@hotmail.com"/>
 		</authors>
-		<url>http://sourceforge.net/projects/openglyph/</url>
-		<javaversion>1.4</javaversion>
+		<url>https://github.com/Chusogar/jMESYS</url>
+		<javaversion>1.7</javaversion>
 	</info>
 	<!-- 
         The gui preferences indication.
@@ -49,7 +49,7 @@
 	    <!--res src="Win_shortcutSpec.xml" id="Win_shortcutSpec.xml"/-->
 		<res id="Unix_shortcutSpec.xml" src="../resources/installer/Unix_shortcutSpec.xml"/>
 	    <res  id="shortcutSpec.xml" src="../resources/installer/Win_shortcutSpec.xml"/>
-	    <res id="Installer.image" src="../resources/images/as-wings.jpg"/>
+	    <res id="Installer.image" src="../resources/images/jMESYS.jpg"/>
 		<res id="XInfoPanel.info" src="../resources/installer/info.txt"/>
 	</resources>
 	
@@ -76,22 +76,15 @@
 	<packs>
 		<pack name="Base" required="yes">
 			<description>The base files</description>
-			<!-- copy the jar files, except cupruntime, which is included in OpenGlyph.jar. -->
-			<!-- cupruntime is useful during development, in order to be able to run the project without building OpenGlyph.jar -->
-			<file src="openglyph.jar" targetdir="$INSTALL_PATH/libs"/>
-			<!-- <file src="../openglyph.log" targetdir="$INSTALL_PATH/libs"/> -->
-			<file src="../openglyph.properties" targetdir="$INSTALL_PATH/libs"/>
-			<file src="../openglyph.script" targetdir="$INSTALL_PATH/libs"/>
-			<!-- <file src="../resources/languages" targetdir="$INSTALL_PATH/libs"/> -->
-			<fileset targetdir="$INSTALL_PATH/libs" dir="../lib">
-				<exclude name="cupruntime.jar" />
-			</fileset>
-			<fileset targetdir="$INSTALL_PATH/libs/textos" dir="../textos">
-				<exclude name="CVS" />
-				<exclude name="FAULKNER" />
-			</fileset>
+			<!-- copy the jar files, except cupruntime, which is included in jMESYS.jar. -->
+			<!-- cupruntime is useful during development, in order to be able to run the project without building jMESYS.jar -->
+			<file src="jMESYS.jar" targetdir="$INSTALL_PATH/libs"/>
+			
+			<fileset targetdir="$INSTALL_PATH/libs" dir="../lib" />
+
 			<!-- resources : icons, licences... -->
-			<file src="../resources/images" targetdir="$INSTALL_PATH/icons"/>			
+			<file src="../resources/images/jMESYS.ico" targetdir="$INSTALL_PATH/images"/>
+			<file src="../resources/images/jMESYS.jpg" targetdir="$INSTALL_PATH/images"/>			
 			<fileset dir="../resources/licenses" targetdir="$INSTALL_PATH/licenses"/>
 			<!-- <file src="../resources/fonts/MDCTranslitLC.ttf" targetdir="$INSTALL_PATH/fonts"/> -->
 			<!-- Post processing for macosx : make OpenGlyph a true Mac Application. -->
@@ -112,20 +105,23 @@
 			</fileset>
 		</pack>
 		<pack name="Technical Documentation" required="no" preselected="no">
-			<description>A Documentation for those who want to extend OpenGlyph or to use it as a library for their own programs.
+			<description>A Documentation for those who want to extend jMESYS or to use it as a library for their own programs.
 				Most users don't need it.
 			</description>
 			<fileset dir="../doc" targetdir="$INSTALL_PATH/doc"/>
 		</pack>
 		<pack name="Sources" required="no" preselected="no">
-			<description>The java sources, for those who want to extend OpenGlyph or want to know how it's done.
-Most users really don't need it. Note that more complete sources (with ant scripts, and everything needed to compile OpenGlyph), are distributed separately.
+			<description>The java sources, for those who want to extend jMESYS or want to know how it's done.
+Most users really don't need it. Note that more complete sources (with ant scripts, and everything needed to compile jMESYS), are distributed separately.
 				 </description>
-			<fileset dir="../src" targetdir="$INSTALL_PATH/src"/>
+			<fileset dir="../src" targetdir="$INSTALL_PATH/src">
+				<exclude name="documentation/"/>
+				<exclude name="games/"/>
+			</fileset>
 			<!-- <fileset dir="../resources/grammars" targetdir="$INSTALL_PATH/grammars"/> -->
 		</pack>
 	</packs>
 	
-	<native type="izpack" name="ShellLink.dll"/>
+	<native type="izpack" name="ShellLink_x64.dll" />
 	
 </installation>
