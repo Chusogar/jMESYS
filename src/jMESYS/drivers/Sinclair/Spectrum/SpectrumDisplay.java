@@ -27,6 +27,7 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	
 	boolean flashImage = true;
 	private long lastFlashUpdate = 0;
+	private long lastScreenUpdate = 0;
 	public static int columns = 32;
 	public byte[] arrayFichero;
 	public static byte [] screenPixels;
@@ -363,6 +364,7 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	}
 	
 	public Image getTVImage(byte[] screenPixels, byte[] screenAttrs) {
+		//System.out.println("getTVImage "+imagenTV);
 		if (imagenTV != null){
 		//Image imagenTV = new Image(FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale);
 		
@@ -373,7 +375,10 @@ public class SpectrumDisplay extends jMESYSDisplay {
 			imageBorder = borderPanel.createImage((FRAME_WIDTH*pixelScale)+(FRAME_MARGINH*2), (FRAME_HEIGHT*pixelScale)+(FRAME_MARGINV*2));
 			System.out.println(imageBorder);
 		}*/
-		borderPaint();
+		
+		if (lastScreenUpdate == 0) {
+			lastScreenUpdate = System.currentTimeMillis();
+    	}
 		//Graphics gi = imageBorder.getGraphics();
 		Graphics gi = imagenTV.getGraphics();
         
@@ -382,8 +387,11 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	        
 	        
 	        if (paintWholeScreen){
+	        //if ((System.currentTimeMillis()-lastScreenUpdate) >= 400) {
+	        	borderPaint();
 	        	doPaintWholeScreen(gi);
 	        	//paintWholeScreen = false;
+	        	lastScreenUpdate = System.currentTimeMillis();
 	        	
 			}
 	        

@@ -2,6 +2,7 @@ package jMESYS.drivers.Sinclair.Spectrum;
 
 import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.Z80JASPER;
+import jMESYS.core.cpu.jMESYSZ80;
 import jMESYS.core.sound.SoundPlayer;
 import jMESYS.core.sound.SoundUtil;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
@@ -21,6 +22,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.time.Clock;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -90,15 +92,23 @@ public class Spectrum48k extends Z80JASPER {
 	private FileFormat[] supportedFormats = null;
 	
 	public Spectrum48k(double clockFrequencyInMHz, jMESYSDisplay disp) {
-		super(clockFrequencyInMHz);
+		super();
+		//super(clockFrequencyInMHz);
 		
 		// inicializa la memoria
+		if (mem==null){
+			mem = new byte[65536];
+			for (int i=0 ; i<65536 ; i++){
+				mem[i]=0;
+			}
+		}
+		
 		//initMemory();
 		display = (SpectrumDisplay)disp;
 		
 		// cargamos la ROM
 		//System.out.println("MEMO: "+mem.length);
-		//loadROM("D:/workspace/jMESYSalpha/bin/bios/Sinclair/Spectrum/ShadowOfTheUnicorn.rom", 0, 16384, false);
+		//loadROM("/games/Sinclair/Spectrum/ShadowOfTheUnicorn.rom", 0, 16384, false);
 		loadROM("/bios/Sinclair/Spectrum/spectrum.rom", 0, 16384, false);
 		/*System.out.println("MEMO: "+mem[0]);
 		for (int i=0;i<10;i++){
@@ -125,6 +135,8 @@ public class Spectrum48k extends Z80JASPER {
 	}
 	
 	public void cycle() {
+		
+		//System.out.println("Cycle");
 		
 		if (timeOfLastSleep == 0)
 			timeOfLastSleep=System.currentTimeMillis();
@@ -165,6 +177,10 @@ public class Spectrum48k extends Z80JASPER {
 	}
 
 	
+	
+	public void interruption() {
+		interrupt();
+	}
 	
 	public final int interrupt() {
 		//numInts++;
@@ -218,9 +234,12 @@ public class Spectrum48k extends Z80JASPER {
 		// Trying to slow to 100%, browsers resolution on the system
 		// time is not accurate enough to check every interrurpt. So
 		// we check every 4 interrupts.
-		if ( (interruptCounter % 4) == 0 ) {
+		//if ( (interruptCounter % 4) == 0 ) {
 			long durOfLastInterrupt = timeOfLastInterrupt - timeOfLastSample;
 			timeOfLastSample = timeOfLastInterrupt;
+			
+			runAtFullSpeed = true;
+			
 			if ( !runAtFullSpeed && (durOfLastInterrupt < 40) ) {
 				//System.out.println("Paro pausa");
 				
@@ -230,9 +249,10 @@ public class Spectrum48k extends Z80JASPER {
 				/*try { Thread.sleep( 10 ); }
 				catch ( Exception ignored ) {}*/
 			}
-		}
+		//}
 		
 		return super.interrupt();
+		//return 0;
 	}
 	
 	
@@ -252,6 +272,8 @@ public class Spectrum48k extends Z80JASPER {
 	 * Z80 hardware interface
 	 */
 	public int inb( int port ) {
+		
+		//System.out.println("inb "+(port & 0xFF));
 		int res = 0xff;
 		//System.out.println("In Port: "+port);
 		//System.out.println("Leo Puerto: "+port);
@@ -260,7 +282,7 @@ public class Spectrum48k extends Z80JASPER {
 		// Assuming an appropriate interface is attached, reading from port 0x1f returns 
 		// the current state of the Kempston joystick in the form 000FUDLR, 
 		// with active bits high.
-		if (( port  == 0x001F ) || ( (port & 0x0020) == 0)){
+		if (( (port & 0xFF)  == 0x001F ) || ( (port & 0x0020) == 0)){
 			/*System.out.println("Joystick Kempston");
 			
 			System.out.println("J_KEMPSTON_FIRE="+J_KEMPSTON_FIRE);
@@ -290,7 +312,7 @@ public class Spectrum48k extends Z80JASPER {
 			boolean la_Cinta_valor = true;
 			ear = (la_Cinta_valor ? 0xFF : 0xBF);
 		}
-		
+		//interrupt();
 		//System.out.println("byte: "+(res | (ear & 0x40)));
 		 return (res | (ear & 0x40));
 	}
@@ -317,7 +339,7 @@ public class Spectrum48k extends Z80JASPER {
 			p += 2;
 			if(tapMax < p) {
 				if(true) {
-					poppc(); //cpu.pc(cpu.pop());
+					popRegister("PC");//poppc(); //cpu.pc(cpu.pop());
 					setRegister ("F", 0x40); //cpu.f(cpu.FZ);
 				}
 				//return !ready;
@@ -373,7 +395,7 @@ public class Spectrum48k extends Z80JASPER {
 		setRegister("A", a); //cpu.a(a);
 		if(rf>=0) {
 			f = rf;
-			poppc(); //cpu.pc(cpu.pop());
+			popRegister("PC");//poppc(); //cpu.pc(cpu.pop());
 		}
 		setRegister("F", f); //cpu.f(f);
 		
@@ -384,7 +406,7 @@ public class Spectrum48k extends Z80JASPER {
 		}*/
 	}
 	
-	public void outb( int port, int outByte, int tstates ) {
+	public void outb( int port, int outByte ) {
 		//System.out.println("Out Port: "+port+" byte: "+outByte);
 		if ( (port & 0x0001) == 0 ) {
 			display.newBorder = (outByte & 0x07);
@@ -393,16 +415,17 @@ public class Spectrum48k extends Z80JASPER {
 		
 		// tape access
 		//if(((valor & 0x10) != (puertos[puerto & 0xff] & 0x10)) || (la_Cinta.playin())){
-		if (port == 0xFF){
+		/*if ((port & 0xFF) == 0xFF){
 			int valor=soundByte;
 			ear = ((valor & 0x10) != 0 ? 0xFF : 0xBF);
 			System.out.println("Out Port: "+port+" byte: "+outByte);
-		}
+		}*/
 		
 	}
 
 	/** Byte access */
 	public void pokeb( int addr, int newByte ){
+		//System.out.println("pokeb Spectrum48");
 		
 		if ( addr < 16384 ) {
 			return;
@@ -410,7 +433,7 @@ public class Spectrum48k extends Z80JASPER {
 		
 		//if ( addr >= (22528+768) ) {
 			mem[ addr ] = (byte) newByte;
-			return;
+			//return;
 		//}
 
 		
@@ -420,10 +443,12 @@ public class Spectrum48k extends Z80JASPER {
 			/*try {
 				
 				if ((addr >=16384) && (addr <= 22527)) {
+					//System.out.println("DIR1: "+addr);
 					display.screenPixels[addr-16384]=(byte) newByte;
 					//display.plot(addr, mem);
 					
 				} else if ( (addr >= 22528) && (addr < 23296) ){
+					//System.out.println("DIR2: "+addr);
 					display.screenAttrs[addr-22528]=(byte) newByte;
 					//display.paintBlockBack(addr, mem);
 				}
@@ -814,7 +839,7 @@ public class Spectrum48k extends Z80JASPER {
 	}
 
 	public final boolean doKey(boolean down, KeyEvent e) {
-		
+		//System.out.println("doKey"+e.getKeyChar());
 		int ascii = e.getKeyChar();
 		int mods = e.getModifiers();
 
@@ -1064,60 +1089,68 @@ public class Spectrum48k extends Z80JASPER {
 		readBytes( is, header, 0,        27 );
 		readBytes( is, mem,    16384, 49152 );
     
-		I( header[0] );
+		setRegister("I", header[0] );
 
-		HL( header[1] | (header[2]<<8) );
-		DE( header[3] | (header[4]<<8) );
-		BC( header[5] | (header[6]<<8) );
-		AF( header[7] | (header[8]<<8) );
+		setRegister("HL", header[1] | (header[2]<<8) );
+		setRegister("DE", header[3] | (header[4]<<8) );
+		setRegister("BC", header[5] | (header[6]<<8) );
+		setRegister("AF", header[7] | (header[8]<<8) );
 
 		exx();
 		ex_af_af();
 
-		HL( header[9]  | (header[10]<<8) );
-		DE( header[11] | (header[12]<<8) );
-		BC( header[13] | (header[14]<<8) );
+		setRegister("HL", header[9]  | (header[10]<<8) );
+		setRegister("DE", header[11] | (header[12]<<8) );
+		setRegister("BC", header[13] | (header[14]<<8) );
 
-		IY( header[15] | (header[16]<<8) );
-		IX( header[17] | (header[18]<<8) );
+		setRegister("IY", header[15] | (header[16]<<8) );
+		setRegister("IX", header[17] | (header[18]<<8) );
 
 		if ( (header[19] & 0x04)!= 0 ) {
-			IFF2( true );
+			//IFF2( true );
+			interruptFF("IFF2", true);
 		}
 		else {
-			IFF2( false );
+			//IFF2( false );
+			interruptFF("IFF2", false);
 		}
 
-		R( header[20] );
+		setRegister("R", header[20] );
 
-		AF( header[21] | (header[22]<<8) );
-		SP( header[23] | (header[24]<<8) );
+		setRegister("AF", header[21] | (header[22]<<8) );
+		setRegister("SP", header[23] | (header[24]<<8) );
 
 		switch( header[25] ) {
 		case 0:
-			IM( IM0 );
+			//IM( IM0 );
+			setInterruptMode("", 0);
 			break;
 		case 1:
-			IM( IM1 );
+			//IM( IM1 );
+			setInterruptMode("", 1);
 			break;
 		default:
-			IM( IM2 );
+			//IM( IM2 );
+			setInterruptMode("", 2);
 			break;
 		}
 
 		outb( 254, header[26], 0 ); // border
      
 		/* Emulate RETN to start */
-		IFF1( IFF2() );
+		//IFF1( IFF2() );
+		interruptFF("IFF1", interruptFF("IFF2"));
 		REFRESH( 2 );
-		poppc();
+		popRegister("PC"); //poppc();
 
 		/*if ( urlField != null ) {
 			urlField.setText( name );
 		}*/
 		this.resumeCPU();
 		//System.out.println("PC2="+PC());
-		this.execute();
+		
+		//OJO !!!
+		//this.execute();
 	}
 	
 	private int readBytes(InputStream is, byte[] a, int off, int n) throws Exception {
@@ -1183,4 +1216,9 @@ public class Spectrum48k extends Z80JASPER {
 		
 		return supportedFormats;
 	}
+
+	
+
+	
+	
 }

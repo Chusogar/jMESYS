@@ -119,7 +119,7 @@ public class FormatTAP extends FileFormat {
 			if(tape.length < p) {
 				if(ready) {
 					cpu.popRegister("PC");
-					cpu.F(0x40);
+					cpu.setRegister("F", 0x40);
 				}
 				return !ready;
 			}
@@ -177,7 +177,7 @@ public class FormatTAP extends FileFormat {
 			f = rf;
 			cpu.popRegister("PC");
 		}
-		cpu.F(f);
+		cpu.setRegister("F", f);
 		tape_pos = p;
 		return rf<0;
 	}

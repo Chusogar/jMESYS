@@ -442,7 +442,9 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 				rf.setName("SpiritOfNinjaThe.z80.zip");
 				rf.setPath("http://www.worldofspectrum.org/pub/sinclair/games/s");
 				xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());*/
-				getComputer().loadTapeDemo();
+				
+				
+				//getComputer().loadTapeDemo();
 			} catch (Exception e) {
 				e.printStackTrace(System.out);
 			}
@@ -489,6 +491,10 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 			System.out.println("Option="+dialog.getOption());
 			if (dialog.getOption() == 1){
 				getComputer().pokeb(Integer.parseInt(dialog.getAddress()), Integer.parseInt(dialog.getValue()));
+				int posi=16384;
+				for (int i=posi;i<(posi+100);i++){
+					System.out.print(getComputer().peekb(i)+" ");
+				}
 			}
 			
 		}  else if (ev.getActionCommand().equals("Size X 3")) {

@@ -28,6 +28,12 @@ public abstract class Z80JASPER extends CPU {
 		isHalted=false;
 	}
 
+	public Z80JASPER() {
+		super();
+		tstatesPerInterrupt = (int) ((3.5 * 1e6) / 50);
+		setMem(mem);
+	}
+	
 	public Z80JASPER( double clockFrequencyInMHz ) {
 		super();
 		tstatesPerInterrupt = (int) ((clockFrequencyInMHz * 1e6) / 50);
@@ -339,6 +345,9 @@ public abstract class Z80JASPER extends CPU {
 		return t;
 	}
 
+	public void interruption() {
+		interrupt();		
+	}
 
 	/** Reset all registers to power on state */
 	public void reset() {
@@ -374,6 +383,7 @@ public abstract class Z80JASPER extends CPU {
 
 	/** IO ports */
 	public void outb( int port, int bite, int tstates ) {
+		outb(port, bite);
 	}
 	public int inb( int port ) {
 		return 0xff;
@@ -385,6 +395,7 @@ public abstract class Z80JASPER extends CPU {
 	}
 
 	public int interrupt() {
+	//public void interruption() {
 		// If not a non-maskable interrupt
 		if ( !IFF1() ) {
 			return 0;
@@ -432,6 +443,7 @@ public abstract class Z80JASPER extends CPU {
 
 		if ( interruptTriggered( local_tstates ) ) {
 			local_tstates -= tstatesPerInterrupt - interrupt();
+			//interruption();
 		}
 
 		REFRESH( 1 );
@@ -4436,5 +4448,9 @@ public abstract class Z80JASPER extends CPU {
 	
 	public int getInterrupt(){
 		return I();
+	}
+	
+	public String getCoreVersion() {
+		return "JASPER CORE";
 	}
 }

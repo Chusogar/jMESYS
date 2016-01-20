@@ -109,7 +109,8 @@ public class FormatSNA extends FileFormat {
 			break;
 		}
 
-		cpu.outb( 254, header[26], 0 ); // border
+		//cpu.outb( 254, header[26], 0 ); // border
+		cpu.outb( 254, header[26]); // border
      
 		/* Emulate RETN to start */
 		cpu.interruptFF("IFF1", cpu.interruptFF("IFF2") );

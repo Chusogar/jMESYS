@@ -11,11 +11,17 @@ import java.util.zip.ZipInputStream;
 public abstract class CPU {
 	
 	protected byte[] mem;
+	private final Clock clock;
 	
 	public CPU() {
 		super();
 		mem = getMem();
+		this.clock = Clock.getInstance();
+		System.out.println( "CORE VERSION: " + getCoreVersion() );
 	}
+	
+	// core version
+	public abstract String getCoreVersion();
 	
 	// Memory
 	public abstract byte[] getMem();
@@ -23,6 +29,7 @@ public abstract class CPU {
 	public abstract int getMemorySize();
 	public abstract void setMemorySize(int mSize);
 	public abstract void pokeb(int addr, int newByte);
+	
 	public abstract void pokew( int addr, int word );
 	public abstract int peekb( int addr );
 	public abstract int peekw( int addr );
@@ -32,22 +39,21 @@ public abstract class CPU {
 	public abstract int getRegister(String regName);	
 	public abstract void pushRegister(String regName);
 	public abstract void popRegister(String regName);
-
-	// Flags
-	public abstract int F();
-	public abstract void F( int bite );
 	
 	// Interrupts
 	public abstract void interruptFF(String iffName, boolean value);
 	public abstract boolean interruptFF(String iffName);	
 	public abstract void setInterruptMode(String interrupt, int value);
-	public abstract void setInterrupt(int value);
-	public abstract int getInterrupt();
 	public abstract int getInterruptMode(String iffName);
 	public abstract void cycle();
 	
+	public abstract void interruption();
+	
 	// ports
 	public abstract void outb( int port, int bite, int tstates );
+	
+	public abstract int inb( int port );
+	public abstract void outb( int port, int bite );
 	
 	// refresh
 	public abstract void REFRESH( int t );
@@ -118,5 +124,43 @@ public abstract class CPU {
 	    }
 	    return result;
 	  }
+	
+	public void contendedStates(int address, int tstates) {
+        // Additional clocks to be added on some instructions
+        clock.addTstates(tstates);
+    }
 
+	public int fetchOpcode(int address) {
+		//System.out.println("fetchOpcode");
+        // 3 clocks to fetch opcode from RAM and 1 execution clock
+        clock.addTstates(4);
+        cycle();
+        return peekb(address) & 0xff;
+    }
+	
+	public void execDone() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+	
+	public void breakpoint() {
+        // Emulate CP/M Syscall at address 5
+        /*switch (z80.getRegC()) {
+            case 0: // BDOS 0 System Reset
+                System.out.println("Z80 reset after " + clock.getTstates() + " t-states");
+                finish = true;
+                break;
+            case 2: // BDOS 2 console char output
+                System.out.print((char) z80.getRegE());
+                break;
+            case 9: // BDOS 9 console string output (string terminated by "$")
+                int strAddr = z80.getRegDE();
+                while (z80Ram[strAddr] != '$') {
+                    System.out.print((char) z80Ram[strAddr++]);
+                }
+                break;
+            default:
+                System.out.println("BDOS Call " + z80.getRegC());
+                finish = true;
+        }*/
+    }
 }

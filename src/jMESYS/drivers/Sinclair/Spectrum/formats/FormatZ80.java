@@ -239,7 +239,8 @@ public class FormatZ80 extends FileFormat {
 			tbyte = 1;
 		}
 
-		cpu.outb( 254, ((tbyte >> 1) & 0x07), 0 ); // border
+		//cpu.outb( 254, ((tbyte >> 1) & 0x07), 0 ); // border
+		cpu.outb( 254, ((tbyte >> 1) & 0x07)); // border
 
 		if ( (tbyte & 0x01) != 0 ) {
 			cpu.setRegister("R", cpu.getRegister("R") | 0x80 );

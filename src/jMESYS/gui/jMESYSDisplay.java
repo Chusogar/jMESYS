@@ -160,6 +160,7 @@ public abstract class jMESYSDisplay extends JComponent {
 		
 	    public void paintComponent(Graphics g) {
 	    	//System.out.println("paintComponent jMESYSDisplay");
+	    	//kk
 	    	//g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, getTotalWidth(), getTotalHeight(), null);
 	    	
 	    	g.drawImage(getBorderImage(), 0, 0, (FRAME_WIDTH*pixelScale)+(FRAME_MARGINH*2), (FRAME_HEIGHT*pixelScale)+(FRAME_MARGINV*2), null);
@@ -183,7 +184,8 @@ public abstract class jMESYSDisplay extends JComponent {
 				BufferedImage destImage=new BufferedImage(FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, BufferedImage.TYPE_INT_ARGB);
 				OutImage = op.filter( (BufferedImage)getScreenImage(), destImage);
 			} else {
-				OutImage = (BufferedImage) getScreenImage();
+				//OutImage = (BufferedImage) getScreenImage();
+				return getScreenImage();
 			}
 			
 			return OutImage;
