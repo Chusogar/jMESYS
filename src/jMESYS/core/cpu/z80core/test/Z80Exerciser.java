@@ -12,6 +12,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.Clock;
 import jMESYS.core.cpu.z80core.Z80operations;
 import jMESYS.core.cpu.z80core.Z80;
@@ -20,7 +22,8 @@ import jMESYS.core.cpu.z80core.Z80;
  *
  * @author jsanchez
  */
-public class Z80Exerciser implements Z80operations {
+//public class Z80Exerciser implements Z80operations {
+public class Z80Exerciser extends CPU {
 
     private final Z80 z80;
     private final Clock clock;

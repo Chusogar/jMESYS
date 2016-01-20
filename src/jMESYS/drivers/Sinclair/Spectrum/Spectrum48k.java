@@ -28,7 +28,7 @@ import java.util.zip.ZipInputStream;
 
 
 
-public class Spectrum48k extends Z80JASPER {
+public class Spectrum48k extends jMESYSZ80 implements Runnable {
 	
 	int numInts = 0;
 	protected int cycles = 0;
@@ -148,7 +148,7 @@ public class Spectrum48k extends Z80JASPER {
 			timeOfLastSleep=System.currentTimeMillis();  
 	        } catch (Exception e) { }
 		}*/
-		
+		System.arraycopy(mem, 16384, display.arrayFichero, 0, display.arrayFichero.length);
 		
 		if (soundON) {
 			if (((cycles++ & 0x10) == 0) ) {
@@ -195,27 +195,7 @@ public class Spectrum48k extends Z80JASPER {
 		// temporizador
 		timeOfLastInterrupt = System.currentTimeMillis();
 		
-		if (display != null ){
-			if (display.arrayFichero != null){
 		
-				// Refresco de pantalla
-				//if ( (interruptCounter % refreshRate) == 0 ) {
-				//if ( (System.currentTimeMillis()-timeOfLastRefreshedScreen) > timeOfLastRefreshedScreen ) {
-					
-					System.arraycopy(mem, 16384, display.arrayFichero, 0, display.arrayFichero.length);
-					display.loadScreen(display.arrayFichero);
-					timeOfLastRefreshedScreen = System.currentTimeMillis();
-				//}
-				
-				//System.out.println(mem[16384]);
-				/*try { 
-					Thread.sleep( 500 ); 
-				} catch (Exception ignored ) {
-					System.out.println(ignored);
-				}*/
-				
-			}
-		}
 		//display.loadScreen("D:/workspace/jMESYS/bin/screens/WorldSeriesBaseball.scr");
 		
 		// sound
@@ -1215,6 +1195,40 @@ public class Spectrum48k extends Z80JASPER {
 		}
 		
 		return supportedFormats;
+	}
+
+	@Override
+	public void run() {
+		System.out.println("RUN!!!!!!!!!!!!!!!");
+		 while (true) {
+		if (display != null ){
+			if (display.arrayFichero != null){
+		
+				// Refresco de pantalla
+				//if ( (interruptCounter % refreshRate) == 0 ) {
+				//if ( (System.currentTimeMillis()-timeOfLastRefreshedScreen) > timeOfLastRefreshedScreen ) {
+					
+					//System.arraycopy(mem, 16384, display.arrayFichero, 0, display.arrayFichero.length);
+					
+					//display.loadScreen(display.arrayFichero);
+					
+					if ((System.currentTimeMillis()-timeOfLastRefreshedScreen) > 100) {
+						display.loadScreen(display.arrayFichero);
+						display.repaint();
+						timeOfLastRefreshedScreen = System.currentTimeMillis();
+					}
+				//}
+				
+				//System.out.println(mem[16384]);
+				/*try { 
+					Thread.sleep( 500 ); 
+				} catch (Exception ignored ) {
+					System.out.println(ignored);
+				}*/
+				
+			}
+		}
+		}
 	}
 
 	

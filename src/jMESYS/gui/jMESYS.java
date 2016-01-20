@@ -153,6 +153,8 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		
 		
 		
+		new Thread(computer, "SpectrumThread").start();
+		
 		// creo la lista de opciones
 		try {
 			t.getMenu().setFormatsMenu(t.getComputer().getSupportedFileFormats(), t);
@@ -172,6 +174,7 @@ public class jMESYS extends JFrame implements KeyListener, MouseListener, Runnab
 		splash.closeSplash();
 		
 		//t.getDisplay().loadScreen("D:/workspace/jMESYS/bin/screens/WorldSeriesBasketball.scr");
+		
 		t.getComputer().execute();
 		
 		//t.getDisplay().loadScreen("D:/workspace/jMESYS/bin/screens/WorldSeriesBasketball.scr");

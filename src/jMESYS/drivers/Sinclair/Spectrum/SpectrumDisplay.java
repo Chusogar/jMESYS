@@ -387,7 +387,7 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	        
 	        
 	        if (paintWholeScreen){
-	        //if ((System.currentTimeMillis()-lastScreenUpdate) >= 400) {
+	        //if ((System.currentTimeMillis()-lastScreenUpdate) >= 35) {
 	        	borderPaint();
 	        	doPaintWholeScreen(gi);
 	        	//paintWholeScreen = false;
@@ -487,13 +487,13 @@ public class SpectrumDisplay extends jMESYSDisplay {
 
 	public void loadScreen(byte[] array) {
 		
-		arrayFichero = array;
+		//arrayFichero = array;
 		
 		screenPixels=new byte[(FRAME_WIDTH*FRAME_HEIGHT)];
-		System.arraycopy(arrayFichero, 0, screenPixels, 0, (FRAME_HEIGHT*columns));
+		System.arraycopy(array, 0, screenPixels, 0, (FRAME_HEIGHT*columns));
 		// copiamos los atributos
 		screenAttrs=new byte[768];
-		System.arraycopy(arrayFichero, (FRAME_HEIGHT*columns), screenAttrs, 0, 768);
+		System.arraycopy(array, (FRAME_HEIGHT*columns), screenAttrs, 0, 768);
 		// copiamos el flash
 		/*flashAttrs=new boolean[768];
 		
@@ -502,7 +502,7 @@ public class SpectrumDisplay extends jMESYSDisplay {
         }*/
 		
 		// repintamos
-		repaint();
+		//repaint();
 	}
 
 	
