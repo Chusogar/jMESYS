@@ -137,6 +137,7 @@ import java.util.Arrays;
 
 import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.Clock;
+//import z80core.Z80.IntMode;
 
 public class Z80 {
 
@@ -913,7 +914,7 @@ public class Z80 {
      *             http://www.worldofspectrum.org/forums/showthread.php?t=34574
      */
     public void reset() {
-        if (pinReset) {
+    	if (pinReset) {
             pinReset = false;
         } else {
             regA = regAx = 0xff;
@@ -933,7 +934,24 @@ public class Z80 {
             memptr = 0xffff;
         }
 
-        regPC = 0;
+		regA= 0 ;
+		regFx= 0 ;
+		setRegBC(0);
+		setRegDE( 0 );
+		setRegHL( 0 );
+
+		exx();
+		//ex_af_af();
+
+		
+		setRegIX( 0 );
+		setRegIY( 0 );
+
+		regR= 0 ;
+
+		regI= 0 ;
+		
+		regPC = 0 ; regSP= 0;
         regI = regR = 0;
         regRbit7 = false;
         ffIFF1 = false;
