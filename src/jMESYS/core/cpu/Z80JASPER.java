@@ -272,7 +272,7 @@ public abstract class Z80JASPER extends CPU {
 		/*System.out.println("Memoria: "+mem.length);
 		System.out.println("address: "+(addr & 0xFFFF));
 		System.out.println("value: : "+newByte);*/
-		if ((addr & 0xFFFF) == 16384) System.out.println("16384="+newByte);
+		//if ((addr & 0xFFFF) == 16384) System.out.println("16384="+newByte);
 		mem[ addr & 0xFFFF ] = new Integer(newByte).byteValue();
 	}
 

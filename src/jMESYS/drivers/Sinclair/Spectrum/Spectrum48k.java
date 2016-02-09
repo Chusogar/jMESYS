@@ -2,6 +2,7 @@ package jMESYS.drivers.Sinclair.Spectrum;
 
 import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.Z80JASPER;
+import jMESYS.core.cpu.Z80QAOP;
 import jMESYS.core.cpu.jMESYSZ80;
 import jMESYS.core.sound.SoundPlayer;
 import jMESYS.core.sound.SoundUtil;
@@ -406,7 +407,9 @@ public class Spectrum48k extends jMESYSZ80 implements Runnable {
 	/** Byte access */
 	public void pokeb( int addr, int newByte ){
 		//System.out.println("pokeb Spectrum48");
-		
+		if (addr==22528){
+			System.out.println("Poke "+addr+"="+newByte);
+		}
 		if ( addr < 16384 ) {
 			return;
 		}

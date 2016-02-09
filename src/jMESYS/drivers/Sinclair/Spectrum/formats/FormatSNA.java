@@ -85,12 +85,14 @@ public class FormatSNA extends FileFormat {
 		cpu.setRegister("IY", ( header[15] | (header[16]<<8) ));
 		cpu.setRegister("IX", ( header[17] | (header[18]<<8) ));
 
-		if ( (header[19] & 0x04)!= 0 ) {
-			cpu.interruptFF("IFF2", true);
-		}
+		//if ( (header[19] & 0x04)!= 0 ) {
+		boolean intEn = ( (header[19] & 0x04)!= 0 );
+		cpu.interruptFF("IFF1", intEn);	
+		cpu.interruptFF("IFF2", intEn);
+		/*}
 		else {
 			cpu.interruptFF("IFF2", false);
-		}
+		}*/
 
 		cpu.setRegister("R", ( header[20] ));
 
@@ -113,9 +115,10 @@ public class FormatSNA extends FileFormat {
 		cpu.outb( 254, header[26]); // border
      
 		/* Emulate RETN to start */
-		cpu.interruptFF("IFF1", cpu.interruptFF("IFF2") );
+		/*cpu.interruptFF("IFF1", cpu.interruptFF("IFF2") );
 		cpu.REFRESH( 2 );
-		cpu.popRegister("PC");
+		cpu.popRegister("PC");*/
+		cpu.setRegister("PC", 0x72);
 
 		/*if ( urlField != null ) {
 			urlField.setText( name );
