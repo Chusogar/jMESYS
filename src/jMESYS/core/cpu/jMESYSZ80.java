@@ -24,6 +24,19 @@ public abstract class jMESYSZ80 extends CPU {
         this.clock = Clock.getInstance();
         setMem(mem);
     }
+    
+    public int inb(int port) {
+    	System.out.println("inPort: "+port+", value: "+(z80Ports[port] & 0xff));
+        clock.addTstates(4); // 4 clocks for read byte from bus
+        return z80Ports[port] & 0xff;
+    }
+
+    public void outb(int port, int value) {
+    	System.out.println("outPort: "+port+", value: "+value);
+        clock.addTstates(4); // 4 clocks for write byte to bus
+        z80Ports[port] = (byte)value;
+    }
+    
 
 	// jMESYS methods
     public byte[] getMem() {
@@ -283,7 +296,7 @@ public abstract class jMESYSZ80 extends CPU {
 	public void reset() {
 		System.out.println("RESET jMESYSZ80");
 		clock.reset();
-		//z80.setPinReset();
+		z80.setPinReset();
 		z80.reset();
 		z80.setRegR(1);
 		//z80.ac
@@ -315,19 +328,29 @@ public abstract class jMESYSZ80 extends CPU {
 	            }
 	        }*/
 
-			z80.execute();
-        	if (clock.getTstates() < 32) {
+			if (clock.getTstates() < 32) {
         		z80.setINTLine(true);
         	//z80.interruption();
         	//clock.setTstates(0);
         	}
+        	z80.execute();
+        	if (clock.getTstates() >= 32) {
+        		z80.setINTLine(false);
+        	//z80.interruption();
+        	//clock.setTstates(0);
+        	}
+        	
         	
         //} while (!(clock.getTstates()>31));
         //z80.setINTLine(true);
         //System.out.println("2: " + clock.getTstates());
         //z80.interruption();
-        z80.setINTLine(false);
-	        
+        
+        //paintScreen();
+        if (clock.getTstates()>=4000){
+        	//z80.setINTLine(false);
+	        clock.setTstates(0);
+        }   
 	        
 		}
 	}

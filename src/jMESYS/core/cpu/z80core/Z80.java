@@ -299,6 +299,7 @@ public class Z80 {
     public Z80(CPU z80ops) {
         this.clock = Clock.getInstance();
         Z80opsImpl = z80ops;
+        System.out.println("CLASE: "+Z80opsImpl.getClass().getName());
         execDone = false;
         Arrays.fill(breakpointAt, false);
         reset();
@@ -1475,7 +1476,7 @@ public class Z80 {
 
     // INI
     private void ini() {
-        memptr = getRegBC();
+    	memptr = getRegBC();
         Z80opsImpl.contendedStates(getPairIR(), 1);
         int work8 = Z80opsImpl.inb(memptr);
         Z80opsImpl.pokeb(getRegHL(), work8);
