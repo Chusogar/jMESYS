@@ -27,10 +27,10 @@ public class jMESYSMenu {
 			menubar.setFont(new Font("",0,11));
 			
 			Menu menuFile = new Menu("File");
-		    Menu menuSys = new Menu("Systems");
-		    Menu menuSet = new Menu("Settings");
+			Menu menuSys = new Menu("Systems");
+			Menu menuSet = new Menu("Settings");
 		    
-		    Menu mTape = new Menu("Tape");
+			Menu mTape = new Menu("Tape");
 		    MenuItem mPlayTape = new MenuItem("Play Tape");
 		    mPlayTape.addActionListener(t);
 		    mTape.add(mPlayTape);
@@ -78,6 +78,10 @@ public class jMESYSMenu {
 		    crtcColor.addActionListener(t);
 		    MenuItem crtcBW = new MenuItem("Black and White");
 		    crtcBW.addActionListener(t);
+		    MenuItem crtcGreen = new MenuItem("Green Monochrome");
+		    crtcGreen.addActionListener(t);
+		    MenuItem crtcAmber = new MenuItem("Amber Monochrome");
+		    crtcAmber.addActionListener(t);
 		    
 		    MenuItem ctrcBlurOFF  = new MenuItem("Blur Off");
 		    ctrcBlurOFF.addActionListener(t);
@@ -86,6 +90,8 @@ public class jMESYSMenu {
 		    
 		    mDisplay.add(crtcColor);
 		    mDisplay.add(crtcBW);
+		    mDisplay.add(crtcGreen);
+		    mDisplay.add(crtcAmber);
 		    mDisplay.addSeparator();
 		    mDisplay.add(ctrcBlurOFF);
 		    mDisplay.add(ctrcBlurON);

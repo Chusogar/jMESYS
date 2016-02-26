@@ -1,366 +1,1177 @@
+/*
+ *	Spectrum.java
+ *
+ *	Copyright 2004-2007 Jan Bobrowski <jb@wizard.ae.krakow.pl>
+ *      Extended to 128k by Andrey Radziwill 2008 <iamradziwill@gmail.com>
+ *	This program is free software; you can redistribute it and/or
+ *	modify it under the terms of the GNU General Public License
+ *	version 2 as published by the Free Software Foundation.
+ */
 package jMESYS.drivers.Sinclair.Spectrum;
+import java.awt.image.ImageProducer;
+import java.awt.image.ImageConsumer;
+import java.awt.image.ColorModel;
+import java.awt.image.IndexColorModel;
+import java.awt.event.KeyEvent;
+import java.util.Vector;
 
 import jMESYS.core.cpu.CPU;
-import jMESYS.core.cpu.Z80JASPER;
-import jMESYS.core.cpu.Z80QAOP;
-import jMESYS.core.cpu.jMESYSZ80;
-import jMESYS.core.sound.SoundPlayer;
-import jMESYS.core.sound.SoundUtil;
+import jMESYS.core.cpu.z80.Z80;
+import jMESYS.core.sound.Audio;
+import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTAP;
+import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTZX;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatZ80;
 import jMESYS.files.FileFormat;
 import jMESYS.gui.jMESYSDisplay;
 
-import java.awt.Color;
-import java.awt.Event;
-import java.awt.Graphics;
-import java.awt.event.KeyEvent;
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
-import java.time.Clock;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+public class Spectrum48k extends Thread implements CPU
+{
 
-
-
-public class Spectrum48k extends jMESYSZ80 implements Runnable {
+	public final Z80 cpu = new Z80(this);
+	public SpectrumDisplay display = null;
 	
-	int numInts = 0;
-	protected int cycles = 0;
+	public static final int MODE_48K = 0;
+    public static final int MODE_128K = 1;
+
+	public int rom48k[] = new int[16384];
+    public int rom128k[] = new int[16384];
+    private final int ram48k[][] = new int[3][];
+    private final int whole_ram[][] = new int[8][];
+    private final int ram0[] = new int[16384];
+    private final int ram1[] = new int[16384];
+    private final int ram2[] = new int[16384];
+    private final int ram3[] = new int[16384];
+    private final int ram4[] = new int[16384];
+    private final int ram5[] = new int[16384];
+    private final int ram6[] = new int[16384];
+    private final int ram7[] = new int[16384];
+    public int rom[];
+    int vram[];
+    private boolean lock48k = false;
+    private int mode;
+    private boolean keymatrix = false;
+        
+	public int if1rom[];
+
+	public final Audio audio;
 	public boolean soundON = true;
-
-	/*int tamMem = 65535;
-	
-	private byte[] mem = new byte[tamMem];*/
-	
-	/** Handle TAP **/
-	private int ear = 0;
-	private byte[] tapDemo = new byte[] {66, 65, 84, 84, 76, 69, 32, 32, 32, 32, -53, 1, 0, 0, -42, 0, 22};
-	int tapPos = 0;
-	int tapMax = tapDemo.length;
-	
-	/** Handle screen **/
-	private SpectrumDisplay display;
-	
-	
-	/** Handle Sound **/
-	protected static final int CYCLES_PER_SECOND = 3500000;
-	protected static final int AUDIO_TEST        = 0x40000000;
-	public SoundPlayer player = SoundUtil.getSoundPlayer(true);
-	protected byte soundByte = 0;
-	protected int soundUpdate = 0;
-	protected int audioAdd = player.getClockAdder(AUDIO_TEST, CYCLES_PER_SECOND / 5);
-	
-	/** Handle Keyboard */
-	private static final int b4 = 0x10;
-	private static final int b3 = 0x08;
-	private static final int b2 = 0x04;
-	private static final int b1 = 0x02;
-	private static final int b0 = 0x01;
-	private int _B_SPC  = 0xff;
-	private int _H_ENT  = 0xff;
-	private int _Y_P    = 0xff;
-	private int _6_0    = 0xff;
-	private int _1_5    = 0xff;
-	private int _Q_T    = 0xff;
-	private int _A_G    = 0xff;
-	private int _CAPS_V = 0xff;
-	
-	/** Handle Joystick Kempston */
-	private int J_KEMPSTON_RIGHT = 0;
-	private int J_KEMPSTON_LEFT  = 0;
-	private int J_KEMPSTON_UP 	 = 0;
-	private int J_KEMPSTON_DOWN  = 0;
-	private int J_KEMPSTON_FIRE  = 0;
-	
-	// interrupts
-	private int     interruptCounter = 0;
-	public  long    timeOfLastInterrupt = 0;
-	public  long    timeOfLastSleep = 0;
-	public long 	timeOfLastSample = 0;
-	public long 	timeOfLastRefreshedScreen = 0;
-	public boolean 	runAtFullSpeed = false;
-	//public  double     refreshRate = 0.65;  // refresh screen every 'n' seconds
-	public  int     refreshRate = 2;  // refresh screen every 'n' interrupts
 	
 	// file formats supported
 	private FileFormat[] supportedFormats = null;
-	
-	public Spectrum48k(double clockFrequencyInMHz, jMESYSDisplay disp) {
-		super();
-		//super(clockFrequencyInMHz);
-		
-		// inicializa la memoria
-		if (mem==null){
-			mem = new byte[65536];
-			for (int i=0 ; i<65536 ; i++){
-				mem[i]=0;
-			}
-		}
-		
-		//initMemory();
-		display = (SpectrumDisplay)disp;
-		
-		// cargamos la ROM
-		//System.out.println("MEMO: "+mem.length);
-		//loadROM("/games/Sinclair/Spectrum/ShadowOfTheUnicorn.rom", 0, 16384, false);
-		loadROM("/bios/Sinclair/Spectrum/spectrum.rom", 0, 16384, false);
-		/*System.out.println("MEMO: "+mem[0]);
-		for (int i=0;i<10;i++){
-			System.out.print(mem[i]+" ");
-		}*/
-		
-		// iniciamos el sonido
-		System.out.println("Init Sound");
-		if (soundON) {
-			soundON=true;
-			player.play();
-			player.writeStereo(AUDIO_TEST, AUDIO_TEST);
-		}
-					
-		// reseteamos la cpu
-		reset();
-		
-		// arrancamos la cpu
-		//while (true) {
-			//execute();
-			
-		//}
-				
+
+        public int[] get_rambank(int i) {
+          return whole_ram[i];
+        }
+
+        private void write_ram(int addr, int v) {
+          ram48k[ (addr & 0xc000) >> 0xe][addr & 0x3fff] = v;
+        }
+
+        /**
+         * read from video ram
+         * @param addr int
+         * @return int
+         */
+        private int read_vram(int addr) {
+          return vram[addr];
+        }
+        
+        private int read_ram(int addr) {
+          return ram48k[ (addr & 0xc000) >> 0xe][addr & 0x3fff];
+        }
+
+        public void setKeymatrix(boolean _keymatrix) {
+          keymatrix = _keymatrix;
+        }
+
+	public Spectrum48k(int mode)
+	{
+		super("Spectrum");
+                this.mode = mode;
+                keymatrix = true;
+                rom = mode == MODE_48K ? rom48k : rom128k;
+                for (int i = 0; i < 8; i++)
+                  keyboard[i] = 0xFF;
+                whole_ram[0] = ram0;
+                whole_ram[1] = ram1;
+                whole_ram[2] = ram2;
+                whole_ram[3] = ram3;
+                whole_ram[4] = ram4;
+                whole_ram[5] = ram5;
+                whole_ram[6] = ram6;
+                whole_ram[7] = ram7;
+                ram48k[0] = whole_ram[5];
+                ram48k[1] = whole_ram[2];
+                ram48k[2] = whole_ram[0];
+                vram = whole_ram[5];
+                
+                display=new SpectrumDisplay();
+		for(int i=6144;i<6912;i++) write_ram(i, 070); // white
+
+		audio = Audio.getAudio();
+		audio.open(3500000);
 	}
-	
-	public void cycle() {
-		
-		//System.out.println("Cycle");
-		
-		if (timeOfLastSleep == 0)
-			timeOfLastSleep=System.currentTimeMillis();
-		
-		/*if (System.currentTimeMillis() - timeOfLastSleep >= 2580) {
+
+	public void run()
+	{
 		try {
-			  
-			Thread.sleep(2580);
-			timeOfLastSleep=System.currentTimeMillis();  
-	        } catch (Exception e) { }
-		}*/
-		System.arraycopy(mem, 16384, display.arrayFichero, 0, display.arrayFichero.length);
-		
-		if (soundON) {
-			if (((cycles++ & 0x10) == 0) ) {
-			//if (((cycles) == 1) ) {
-		      //video.cycle();
-			  cycles = 0;
-		      soundUpdate += audioAdd;
-		      if ((soundUpdate & AUDIO_TEST) != 0) {
-		    	//player.play();
-		        soundUpdate -= AUDIO_TEST;
-		        player.writeStereo(soundByte, soundByte);
-		        
-		      } 
-	      
+			frames();
+		} catch(InterruptedException e) {}
+		audio.close();
+	}
+
+	private void end_frame() {
+		au_update();
+		au_time -= 69888;
+		refresh_screen();
+		if(display.border != display.border_solid) {
+			int t = refrb_t;
+			refresh_border();
+			if(t == display.BORDER_START)
+				display.border_solid = display.border;
+		}
+
+		display.update_screen();
+
+		cpu.time -= 69888;
+		if(--flash_count <= 0) {
+			flash ^= 0xFF;
+			flash_count = 16;
+		}
+		audio.level -= audio.level>>8;
+	}
+
+	private long time;
+	private int timet;
+
+	private void frames() throws InterruptedException
+	{
+		time = System.currentTimeMillis();
+		cpu.time = -14335;
+		cpu.time_limit = 55553;
+		au_time = cpu.time;
+		for(;;) {
+			byte[] tap = null;
+			boolean tend = false;
+			synchronized(this) {
+				if(display.want_scale != display.scale) {
+					display.scale = display.want_scale;
+					display.width=display.scale*display.W; display.height=display.scale*display.H;
+					notifyAll();
+					display.abort_consumers();
+				}
+				if(want_pause != paused) {
+					paused = want_pause;
+					notifyAll();
+				}
+				if(stop_loading) {
+					System.out.println("stop_loading");
+					loading = stop_loading = false;
+					notifyAll();
+				}
+				if(!paused) {
+					tap = tape;
+					tend = tape_ready;
+					if(!loading && tap!=null)
+						loading = check_load();
+				}
 			}
-	    }
-		
-		//player.stop();
-	  }
-	
-	public boolean manageKeyboard(boolean down, KeyEvent keyPressed){
-			
-			boolean key = doKey(down, keyPressed);
-			//resetKeyboard();
-			return key;
-	}
 
-	
-	
-	public void interruption() {
-		interrupt();
-	}
-	
-	public final int interrupt() {
-		//numInts++;
-		//System.out.println("Interrupción!!!!!!");
-		//System.out.println(mem);
-		//System.out.println(mem.length);
-		
-		interruptCounter++;
-		if (timeOfLastRefreshedScreen == 0)
-			timeOfLastRefreshedScreen=System.currentTimeMillis();
-		
-		// temporizador
-		timeOfLastInterrupt = System.currentTimeMillis();
-		
-		
-		//display.loadScreen("D:/workspace/jMESYS/bin/screens/WorldSeriesBaseball.scr");
-		
-		// sound
-		//System.out.println("Antes sound");
-		/*if ((cycles++ & 0x03) == 0) {
-	      //video.cycle();
-			//System.out.println("Probando probando...");
-	      soundUpdate += audioAdd;
-	      if ((soundUpdate & AUDIO_TEST) != 0) {
-	    	  //System.out.println("Probando probando...");
-	        soundUpdate -= AUDIO_TEST;
-	        player.writeMono(soundByte);
-	      }
-	    }*/
-
-		// Trying to slow to 100%, browsers resolution on the system
-		// time is not accurate enough to check every interrurpt. So
-		// we check every 4 interrupts.
-		//if ( (interruptCounter % 4) == 0 ) {
-			long durOfLastInterrupt = timeOfLastInterrupt - timeOfLastSample;
-			timeOfLastSample = timeOfLastInterrupt;
-			
-			runAtFullSpeed = true;
-			
-			if ( !runAtFullSpeed && (durOfLastInterrupt < 40) ) {
-				//System.out.println("Paro pausa");
-				
-				//try { Thread.sleep( 135 - durOfLastInterrupt ); }
-				try { Thread.sleep( 124 - durOfLastInterrupt ); }
-				catch ( Exception ignored ) {}
-				/*try { Thread.sleep( 10 ); }
-				catch ( Exception ignored ) {}*/
+			update_keyboard();
+			refresh_new();
+			//System.out.println("Loading..."+loading);
+			if(paused) {
+				cpu.time = cpu.time_limit;
+			} else if(loading) {
+				loading = do_load(tap, tend);
+				cpu.time = cpu.time_limit;
+			} else {
+				cpu.interrupt(0xFF);
+				cpu.execute();
 			}
-		//}
-		
-		return super.interrupt();
-		//return 0;
-	}
-	
-	
-	public void setDisplay(jMESYSDisplay disp) {
-		System.out.println("setDisplay");
-		display = (SpectrumDisplay) disp;
+			end_frame();
+
+			/* sync */
+
+			timet += 121;
+			if(timet >= 125) {timet -= 125; time++;}
+			time += 19;
+
+			long t = System.currentTimeMillis();
+			if(t < time) {
+				t = time-t;
+				sleep(t);
+			} else {
+				yield();
+				if(interrupted())
+					break;
+				t -= 100;
+				if(t > time)
+					time = t;
+			}
+		}
 	}
 
-	/*private void initMemory() {
-		for (int i = 0 ; i<tamMem ; i++ ){
-			mem[i]=0x00;
-		}
-		
-	}*/
+	boolean paused = true;
+	boolean want_pause = true;
 
-	/**
-	 * Z80 hardware interface
-	 */
-	public int inb( int port ) {
-		
-		//System.out.println("inb "+(port & 0xFF));
-		int res = 0xff;
-		//System.out.println("In Port: "+port);
-		//System.out.println("Leo Puerto: "+port);
-		// ---- JOYSTICKS HAVE PRIORITY!!!! ----
-		// Kempston Joystick
-		// Assuming an appropriate interface is attached, reading from port 0x1f returns 
-		// the current state of the Kempston joystick in the form 000FUDLR, 
-		// with active bits high.
-		if (( (port & 0xFF)  == 0x001F ) || ( (port & 0x0020) == 0)){
-			/*System.out.println("Joystick Kempston");
-			
-			System.out.println("J_KEMPSTON_FIRE="+J_KEMPSTON_FIRE);
-			System.out.println("J_KEMPSTON_UP="+J_KEMPSTON_UP);
-			System.out.println("J_KEMPSTON_DOWN="+J_KEMPSTON_DOWN);
-			System.out.println("J_KEMPSTON_LEFT="+J_KEMPSTON_LEFT);
-			System.out.println("J_KEMPSTON_RIGHT="+J_KEMPSTON_RIGHT);*/
-			
-			return ((J_KEMPSTON_FIRE << 4) | 
-					(J_KEMPSTON_UP << 3)   | 
-					(J_KEMPSTON_DOWN << 2) | 
-					(J_KEMPSTON_LEFT << 1) | 
-					(J_KEMPSTON_RIGHT));
-		}
-
-		if ( (port & 0x0001) == 0 ) {
-			//System.out.println("Tecla");
-			if ( (port & 0x8000) == 0 ) { res &= _B_SPC;}
-			if ( (port & 0x4000) == 0 ) { res &= _H_ENT;}
-			if ( (port & 0x2000) == 0 ) { res &= _Y_P;}
-			if ( (port & 0x1000) == 0 ) { res &= _6_0;}
-			if ( (port & 0x0800) == 0 ) { res &= _1_5;}
-			if ( (port & 0x0400) == 0 ) { res &= _Q_T;}
-			if ( (port & 0x0200) == 0 ) { res &= _A_G;}
-			if ( (port & 0x0100) == 0 ) { res &= _CAPS_V;}
-			//resetKeyboard();
-			boolean la_Cinta_valor = true;
-			ear = (la_Cinta_valor ? 0xFF : 0xBF);
-		}
-		//interrupt();
-		//System.out.println("byte: "+(res | (ear & 0x40)));
-		 return (res | (ear & 0x40));
+	public synchronized void pause(boolean y) throws InterruptedException
+	{
+		want_pause = y;
+		while(paused != want_pause)
+			wait();
 	}
+
+	public synchronized void reset()
+	{
+		stop_loading();
+		cpu.reset();
+		au_reset();
+                rom = mode == MODE_48K ? rom48k : rom128k;
+                lock48k = false;
+                vram = whole_ram[5];
+	}
+
+	/* Z80.Env */
+
+	public final int m1(int addr, int ir) {
+		int n = cpu.time - ctime;
+		if(n>0) cont(n);
+
+		addr -= 0x4000;
+		if((addr&0xC000) == 0)
+			cont1(0);
+		ctime = NOCONT;
+		if((ir&0xC000) == 0x4000)
+			ctime = cpu.time + 4;
+		if(addr >= 0)
+			return read_ram(addr);
+		n = rom[addr+=0x4000];
+		if(if1rom!=null && (addr&0xE8F7)==0) {
+			if(addr==0x0008 || addr==0x1708) {
+				if(rom==rom48k) rom = if1rom;
+			} else if(addr==0x0700) {
+				if(rom==if1rom) rom = rom48k;
+			}
+		}
+		return n;
+	}
+
+	public final int mem(int addr) {
+		int n = cpu.time - ctime;
+		if(n>0) cont(n);
+		ctime = NOCONT;
+
+		addr -= 0x4000;
+		if(addr>=0) {
+			if(addr<0x4000) {
+				cont1(0);
+				ctime = cpu.time + 3;
+			}
+			return read_ram(addr);
+		}
+		return rom[addr+0x4000];
+	}
+
+	public final int mem16(int addr) {
+		int n = cpu.time - ctime;
+		if(n>0) cont(n);
+		ctime = NOCONT;
+
+		int addr1 = addr-0x3FFF;
+		if((addr1&0x3FFF)!=0) {
+			if(addr1<0)
+				return rom[addr] | rom[addr1+0x4000]<<8;
+			if(addr1<0x4000) {
+				cont1(0); cont1(3);
+				ctime = cpu.time + 6;
+			}
+			return read_ram(addr-0x4000) | read_ram(addr1)<<8;
+		}
+		switch(addr1>>>14) {
+		case 0:
+			cont1(3);
+			ctime = cpu.time + 6;
+			return rom[addr] | read_ram(0)<<8;
+		case 1:
+			cont1(0);
+		case 2:
+			return read_ram(addr-0x4000) | read_ram(addr1)<<8;
+		default:
+			return read_ram(0xBFFF) | rom[0]<<8;
+		}
+	}
+
+	public final void mem(int addr, int v) {
+		int n = cpu.time - ctime;
+		if(n>0) cont(n);
+		ctime = NOCONT;
+
+		addr -= 0x4000;
+		if(addr < 0x4000) {
+			if(addr < 0) return;
+			cont1(0);
+			ctime = cpu.time + 3;
+			if(addr<6912 && read_ram(addr)!=v)
+				refresh_screen();
+		}
+                write_ram(addr, v);
+	}
+
+	public final void mem16(int addr, int v) {
+
+		int addr1 = addr-0x3FFF;
+		if((addr1&0x3FFF)!=0) {
+			int n = cpu.time - ctime;
+			if(n>0) cont(n);
+			ctime = NOCONT;
+
+			if(addr1<0) return;
+			if(addr1>=0x4000) {
+				write_ram(addr1-1, v&0xFF);
+				write_ram(addr1, v>>>8);
+				return;
+			}
+		}
+		mem(addr, v&0xFF);
+		cpu.time += 3;
+		mem(addr+1, v>>>8);
+		cpu.time -= 3;
+	}
+
+	public byte ay_idx;
+	private byte ula28;
+
+        /**
+         * 128k port
+         * @param v int
+         */
+        private void out7ffd(int v) {
+          if (mode == MODE_48K || lock48k)
+            return;
+          /* D0..D2 ram bank */
+          int ram_bank = v & 0x7;
+          ram48k[2] = whole_ram[ram_bank];
+          /* D3 videoram */
+          if ( (v & 0x08) == 0x08) {
+            /* ram7 */
+            vram = whole_ram[7];
+          }
+          else {
+            /* standart (ram5) */
+            vram = whole_ram[5];
+          }
+          /* D4 rom */
+          if ( (v & 0x10) == 0x10) {
+            /* rom 48 */
+            rom = rom48k;
+          }
+          else {
+            /* rom 128 */
+            rom = rom128k;
+          }
+          /* D5 lock this port */
+          if ( (v & 0x20) == 0x20) {
+            lock48k = true;
+          }
+        }
+
+	public void out(int port, int v)
+	{
+		//System.out.println("OUT port="+port+" value="+v);
+		cont_port(port);
+
+		if((port&0x0001)==0) {
+			ula28 = (byte)v;
+			int n = v&7;
+			if(n != display.border) {
+				refresh_border();
+				display.border = (byte)n;
+			}
+			n = sp_volt[v>>3 & 3];
+			if(n != speaker) {
+				au_update();
+				speaker = n;
+			}
+		}
+		if((port&0x8002)==0x8000 && ay_enabled) {
+			if((port&0x4000)!=0)
+				ay_idx = (byte)(v&15);
+			else {
+				au_update();
+				ay_write(ay_idx, v);
+			}
+		}
+                /* 128k port */
+                if (port == 0x7ffd) {
+                  out7ffd(v);
+                }
+	}
+
+	public int in(int port)
+	{
+		cont_port(port);
+                /* kempston */
+		if((port&0x00E0)==0)
+			return kempston;
+                /* AY */
+		if((port&0xC002)==0xC000 && ay_enabled) {
+			if(ay_idx>=14 && (ay_reg[7]>>ay_idx-8 & 1) == 0)
+				return 0xFF;
+			return ay_reg[ay_idx];
+		}
+                /* keyboard port FE */
+		int v = 0xFF;
+		if((port&0x0001)==0) {
+			for(int i=0; i<8; i++)
+				if((port&0x100<<i) == 0)
+					v &= keyboard[i];
+			v &= ula28<<2 | 0xBF;
+		} else if(cpu.time>=0) {
+			int t = cpu.time;
+			int y = t/224;
+			t %= 224;
+			if(y<192 && t<124 && (t&4)==0) {
+				int x = t>>1 & 1 | t>>2;
+				if((t&1)==0)
+					x += y & 0x1800 | y<<2 & 0xE0 | y<<8 & 0x700;
+				else
+					x += 6144 | y<<2 & 0x3E0;
+				v = read_ram(x);
+			}
+		}
+		return v;
+	}
+
+	/* contention */
+	// according to scratchpad.wikia.com/wiki/Contended_memory
+
+	static final int NOCONT = 99999;
+	int ctime;
+
+	private final void cont1(int t) {
+		t += cpu.time;
+		if(t<0 || t>=191*224+126) return;
+		if((t&7) >= 6) return;
+		if(t%224 < 126)
+			cpu.time += 6 - (t&7);
+	}
+
+	private final void cont(int n) {
+		int s, k;
+		int t = ctime;
+		if(t+n <= 0) return;
+		s = 191*224+126 - t;
+		if(s < 0) return;
+		s %= 224;
+		if(s > 126) {
+			n -= s-126;
+			if(n <= 0) return;
+			t = 6; k = 15;
+		} else {
+			k = s>>>3;
+			s &= 7;
+			if(s == 7) {
+				s--;
+				if(--n == 0) return;
+			}
+			t = s;
+		}
+		n = n-1 >> 1;
+		if(k<n) n = k;
+		cpu.time += t + 6*n;
+	}
+
+	private void cont_port(int port)
+	{
+		int n = cpu.time - ctime;
+		if(n>0) cont(n);
+
+		if((port&0xC000) != 0x4000) {
+			if((port&0x0001)==0)
+				cont1(1);
+			ctime = NOCONT;
+		} else {
+			ctime = cpu.time;
+			cont(2 + ((port&1)<<1));
+			ctime = cpu.time+4;
+		}
+	}
+
 	
-	public void loadTapeDemo() {
-		
-		/*if(tape_changed || (keyboard[7]&1)==0) {
-			cpu.f(0);
+
+	
+
+	public synchronized void scale(int m)
+	{
+		display.want_scale = m;
+		display.scale=m;
+		try {
+			while(display.scale != m) wait();
+		} catch(InterruptedException e) {
+			currentThread().interrupt();
+		}
+	}
+
+	public int scale() {
+		//System.out.println("SCALE="+display.scale);
+		return display.scale;
+	}
+
+
+	int flash_count = 16;
+	int flash = 0x8000;
+
+	/* screen refresh */
+
+	private int refresh_t, refresh_a, refresh_b, refresh_s;
+
+	private final void refresh_new() {
+		refresh_t = refresh_b = 0;
+		refresh_s = display.Mv*display.W + display.Mh;
+		refresh_a = 0x1800;
+
+		refrb_p = 0;
+		refrb_t = display.BORDER_START;
+		refrb_x = -display.Mh;
+		refrb_y = -8*display.Mv;
+		refrb_r = 1;
+	}
+
+	private final void refresh_screen() {
+		int ft = cpu.time;
+		if(ft < refresh_t)
+			return;
+		final int flash = this.flash;
+		int a = refresh_a, b = refresh_b;
+		int t = refresh_t, s = refresh_s;
+		do {
+			int sch = 0;
+
+			int v = read_vram(a)<<8 | read_vram(b++);
+			if(v>=0x8000) v ^= flash;
+			v = canonic[v];
+			if(v!=display.screen[s]) {
+				display.screen[s] = v;
+				sch = 1;
+			}
+
+			v = read_vram(a+1)<<8 | read_vram(b++);
+			if(v>=0x8000) v ^= flash;
+			v = canonic[v];
+			if(v!=display.screen[++s]) {
+				display.screen[s] = v;
+				sch += 2;
+			}
+
+			if(sch!=0)
+				display.scrchg[a-0x1800>>5] |= sch<<(a&31);
+
+			a+=2; t+=8; s++;
+			if((a&31)!=0) continue;
+			// next line
+			t+=96; s+=2*display.Mh;
+			a-=32; b+=256-32;
+			if((b&0x700)!=0) continue;
+			// next row
+			a+=32; b+=32-0x800;
+			if((b&0xE0)!=0) continue;
+			// next part
+			b+=0x800-256;
+			if(b>=6144) {
+				t = 99999; // just a big value
+				break;
+			}
+		} while(ft >= t);
+		refresh_a = a; refresh_b = b;
+		refresh_t = t; refresh_s = s;
+	}
+
+	/* border refresh */
+
+	
+
+	private int refrb_p, refrb_t;
+	private int refrb_x, refrb_y, refrb_r;
+
+	
+
+	public void refresh_border()
+	{
+		int ft = cpu.time;
+		if(ft < refrb_t)
+			return;
+		display.border_solid = -1;
+
+		int t = refrb_t;
+		int b = canonic[display.border<<11];
+		int p = refrb_p;
+		int x = refrb_x;
+		int r = refrb_r;
+loop:
+		do {
+			if(refrb_y<0 || refrb_y>=192) {
+				do {
+					if(display.screen[p] != b) {
+						display.screen[p] = b;
+						display.brdchg_ud |= r;
+					}
+					p++; t+=4;
+					if(++x < 32+display.Mh)
+						continue;
+					// next line
+					x = -display.Mh;
+					t += 224 - 4*(display.Mh+32+display.Mh);
+					if((++refrb_y & 7) != 0)
+						continue;
+					// next row
+					if(refrb_y == 0) {
+						r = 1;
+						// go to screen part
+						continue loop;
+					} else if(refrb_y == 192+8*display.Mv) {
+						// finish
+						t = 99999;
+						break loop;
+					}
+					r <<= 1;
+				} while(ft >= t);
+				break;
+			}
+			for(;;) {
+				if(x<0) {
+					// left margin
+					for(;;) {
+						if(display.screen[p] != b) {
+							display.screen[p] = b;
+							display.brdchg_l |= r;
+						}
+						p++; t+=4;
+						if(++x == 0)
+							break;
+						if(ft < t)
+							break loop;
+					}
+					// skip screen
+					x = 32; p += 32;
+					t += 4*32;
+					if(ft < t) break loop;
+				}
+				// right margin
+				for(;;) {
+					if(display.screen[p] != b) {
+						display.screen[p] = b;
+						display.brdchg_r |= r;
+					}
+					p++; t+=4;
+					if(++x == 32+display.Mh)
+						break;
+					if(ft < t) break loop;
+				}
+				// next line
+				x = -display.Mh;
+				t += 224 - 4*(display.Mh+32+display.Mh);
+				if((++refrb_y & 7) == 0) {
+					if(refrb_y == 192) {
+						r = 1<<display.Mv;
+						// go to bottom border
+						continue loop;
+					}
+					r <<= 1;
+				}
+				if(ft < t) break loop;
+			}
+		} while(ft >= t);
+
+		refrb_r = r; refrb_x = x;
+		refrb_p = p; refrb_t = t;
+	}
+
+	
+
+	
+
+	static final int canonic[] = new int[32768];
+	static {
+		// .bpppiii 76543210 -> bppp biii 01234567
+		for(int a=0; a<0x8000; a+=0x100) {
+			int b = a>>3 & 0x0800;
+			int p = a>>3 & 0x0700;
+			int i = a & 0x0700;
+			if(p!=0) p |= b;
+			if(i!=0) i |= b;
+			canonic[a] = p<<4 | 0xFF;
+			canonic[a|0xFF] = i<<4 | 0xFF;
+			for(int m=1; m<255; m+=2) {
+				if(i!=p) {
+					int xm = m>>>4 | m<<4;
+					xm = xm>>>2&0x33 | xm<<2&0xCC;
+					xm = xm>>>1&0x55 | xm<<1&0xAA;
+					canonic[a|m] = i<<4 | p | xm;
+					canonic[a|m^0xFF] =  p<<4 | i | xm;
+				} else
+					canonic[a|m] = canonic[a|m^0xFF]
+						= p<<4 | 0xFF;
+			}
+		}
+	}
+
+	
+
+	/* audio */
+
+	static final int CHANNEL_VOLUME = 26000;
+	static final int SPEAKER_VOLUME = 50000;
+
+	public boolean ay_enabled;
+
+	public void ay(boolean y) // enable
+	{
+		if(!y) ay_mix = 0;
+		ay_enabled = y;
+	}
+
+	private int speaker;
+	private static final int sp_volt[];
+
+	private final byte ay_reg[] = new byte[16];
+
+	private int ay_aper, ay_bper, ay_cper, ay_nper, ay_eper;
+	private int ay_acnt, ay_bcnt, ay_ccnt, ay_ncnt, ay_ecnt;
+	private int ay_gen, ay_mix, ay_ech, ay_dis;
+	private int ay_avol, ay_bvol, ay_cvol;
+	private int ay_noise = 1;
+	private int ay_ekeep; // >=0:hold, ==0:stop
+	private boolean ay_div16;
+	private int ay_eattack, ay_ealt, ay_estep;
+
+	private static final int ay_volt[];
+
+	public void ay_write(int n, int v) {
+		switch(n) {
+		case  0: ay_aper = ay_aper&0xF00 | v; break;
+		case  1: ay_aper = ay_aper&0x0FF | (v&=15)<<8; break;
+		case  2: ay_bper = ay_bper&0xF00 | v; break;
+		case  3: ay_bper = ay_bper&0x0FF | (v&=15)<<8; break;
+		case  4: ay_cper = ay_cper&0xF00 | v; break;
+		case  5: ay_cper = ay_cper&0x0FF | (v&=15)<<8; break;
+		case  6: ay_nper = v&=31; break;
+		case  7: ay_mix = ~(v|ay_dis); break;
+		case  8:
+		case  9:
+		case 10:
+			int a=v&=31, x=011<<(n-8);
+			if(v==0) {
+				ay_dis |= x;
+				ay_ech &= ~x;
+			} else if(v<16) {
+				ay_dis &= (x = ~x);
+				ay_ech &= x;
+			} else {
+				ay_dis &= ~x;
+				ay_ech |= x;
+				a = ay_estep^ay_eattack;
+			}
+			ay_mix = ~(ay_reg[7]|ay_dis);
+			a = ay_volt[a];
+			switch(n) {
+			case 8: ay_avol = a; break;
+			case 9: ay_bvol = a; break;
+			case 10: ay_cvol = a; break;
+			}
+			break;
+		case 11: ay_eper = ay_eper&0xFF00 | v; break;
+		case 12: ay_eper = ay_eper&0xFF | v<<8; break;
+		case 13: ay_eshape(v&=15); break;
+		}
+		ay_reg[n] = (byte)v;
+	}
+
+	private void ay_eshape(int v) {
+		if(v<8)
+			v = v<4 ? 1 : 7;
+
+		ay_ekeep = (v&1)!=0 ? 1 : -1;
+		ay_ealt = (v+1&2)!=0 ? 15 : 0;
+		ay_eattack = (v&4)!=0 ? 15 : 0;
+		ay_estep = 15;
+
+		ay_ecnt = -1; // ?
+		ay_echanged();
+	}
+
+	private void ay_echanged()
+	{
+		int v = ay_volt[ay_estep ^ ay_eattack];
+		int x = ay_ech;
+		if((x&1)!=0) ay_avol = v;
+		if((x&2)!=0) ay_bvol = v;
+		if((x&4)!=0) ay_cvol = v;
+	}
+
+	private int ay_tick()
+	{
+		int x = 0;
+		if((--ay_acnt & ay_aper)==0) {
+			ay_acnt = -1;
+			x ^= 1;
+		}
+		if((--ay_bcnt & ay_bper)==0) {
+			ay_bcnt = -1;
+			x ^= 2;
+		}
+		if((--ay_ccnt & ay_cper)==0) {
+			ay_ccnt = -1;
+			x ^= 4;
+		}
+
+		if(ay_div16 ^= true) {
+			ay_gen ^= x;
+			return x & ay_mix;
+		}
+
+		if((--ay_ncnt & ay_nper)==0) {
+			ay_ncnt = -1;
+			if((ay_noise&1)!=0) {
+				x ^= 070;
+				ay_noise ^= 0x28000;
+			}
+			ay_noise >>= 1;
+		}
+
+		if((--ay_ecnt & ay_eper)==0) {
+			ay_ecnt = -1;
+			if(ay_ekeep!=0) {
+				if(ay_estep==0) {
+					ay_eattack ^= ay_ealt;
+					ay_ekeep >>= 1;
+					ay_estep = 16;
+				}
+				ay_estep--;
+				if(ay_ech!=0) {
+					ay_echanged();
+					x |= 0x100;
+				}
+			}
+		}
+		ay_gen ^= x;
+		return x & ay_mix;
+	}
+
+	private int au_value()
+	{
+		int g = ay_mix & ay_gen;
+		int v = speaker;
+		if((g&011)==0) v += ay_avol;
+		if((g&022)==0) v += ay_bvol;
+		if((g&044)==0) v += ay_cvol;
+		return v;
+	}
+
+	private int au_time;
+	private int au_val, au_dt;
+
+	private void au_update() {
+		int t = cpu.time;
+		au_time += (t -= au_time);
+
+		int dv = au_value() - au_val;
+		if(dv != 0) {
+			au_val += dv;
+			audio.step(0, dv);
+		}
+		int dt = au_dt;
+		for(; t>=dt; dt+=16) {
+			if(ay_tick() == 0)
+				continue;
+			dv = au_value() - au_val;
+			if(dv == 0)
+				continue;
+			au_val += dv;
+			audio.step(dt, dv);
+			t -= dt; dt = 0;
+		}
+		au_dt = dt - t;
+		audio.step(t, 0);
+	}
+
+	void au_reset()
+	{
+		/* XXX */
+		speaker = 0;
+		ay_mix = ay_gen = 0;
+		ay_avol = ay_bvol = ay_cvol = 0;
+		ay_ekeep = 0;
+		ay_dis = 077;
+	}
+
+	public static boolean muted = false;
+	static int volume = 50; // %
+
+	public void mute(boolean v) {
+		muted = v;
+		if (muted){
+			ay_ekeep = 0;
+			ay_mix=0;
+		}
+		setvol();
+	}
+
+	public int volumeChg(int chg) {
+		int v = volume + chg;
+		if(v<0) v=0; else if(v>100) v=100;
+		volume = v;
+		setvol();
+		return v;
+	}
+
+	static {
+		sp_volt = new int[4];
+		ay_volt = new int[16];
+		setvol();
+	}
+
+	static void setvol()
+	{
+		double a = muted ? 0 : volume/100.;
+		a *= a;
+
+		sp_volt[2] = (int)(SPEAKER_VOLUME*a);
+		sp_volt[3] = (int)(SPEAKER_VOLUME*1.06*a);
+
+		a *= CHANNEL_VOLUME;
+		int n;
+		ay_volt[n=15] = (int)a;
+		do {
+			ay_volt[--n] = (int)(a *= 0.7071);
+		} while(n>1);
+	}
+
+	/* keyboard & joystick */
+
+	public final int keyboard[] = new int[8];
+	public int kempston = 0;
+	public final KeyEvent keys[] = new KeyEvent[8];
+	static final int arrowsDefault[] = {0143, 0124, 0134, 0144};
+	int arrows[] = arrowsDefault;
+
+	void update_keyboard() {
+		for(int i=0; i<8; i++) keyboard[i] = 0xFF;
+		kempston = 0;
+
+		int m[] = new int[] {-1,-1,-1,-1,-1};
+		int s = 0;
+		synchronized(keys) {
+			for(int i=0; i<keys.length; i++) if(keys[i]!=null) {
+				int k = key(keys[i]);
+				if(k<0) continue;
+				// .......xxx row
+				// ....xxx... column
+				// ...x...... caps shift
+				// ..x....... symbol shift
+				// .x........ caps shift alone
+				// x......... symbol shift alone
+				s |= k;
+				if(k<01000)
+					pressed(k,m);
+			}
+		}
+		if((s&0300)==0) s |= s>>>3 & 0300;
+		if((s&0100)!=0) pressed(000,m);
+		if((s&0200)!=0) pressed(017,m);
+	}
+
+	private final void pressed(int k, int m[])
+	{
+		int a = k&7, b = k>>>3 & 7;
+		int v = keyboard[a] & ~(1<<b);
+		keyboard[a] = v;
+                if (keymatrix) {
+                  int n = m[b];
+                  m[b] = a;
+                  if (n >= 0)
+                    v |= keyboard[n];
+                  for (n = 0; n < 8; n++)
+                    if ( (keyboard[n] | v) != 0xFF)
+                      keyboard[n] = v;
+                }
+	}
+
+	private int key(KeyEvent e)
+	{
+		int c = e.getKeyCode();
+		int a = e.getKeyChar();
+		int i = "[AQ10P\n ZSW29OL]XDE38IKMCFR47UJNVGT56YHB".indexOf((char)c);
+		if(i>=0) simple: {
+			int s = 0;
+			if(c>=KeyEvent.VK_0 && c<=KeyEvent.VK_9) {
+				if(c!=(int)a) break simple;
+				if(e.isAltDown()) s = 0100;
+			}
+			return i | s;
+		}
+		if(a != '\0') {
+			i = "\t\0\0!_\"\0\0:\0\0@);=\0\0\0\0#(\0+.?\0<$'\0-,/\0>%&\0^*".indexOf(a);
+			if(i>=0)
+				return i | 0200;
+		}
+		switch(c) {
+			case KeyEvent.VK_INSERT:
+			case KeyEvent.VK_ESCAPE: return 0103;
+			case KeyEvent.VK_KP_LEFT:
+			case KeyEvent.VK_LEFT: i=0; break;
+			case KeyEvent.VK_KP_DOWN:
+			case KeyEvent.VK_DOWN: i=3; break;
+			case KeyEvent.VK_KP_UP:
+			case KeyEvent.VK_UP: i=2; break;
+			case KeyEvent.VK_KP_RIGHT:
+			case KeyEvent.VK_RIGHT: i=1; break;
+			case KeyEvent.VK_BACK_SPACE: return 0104;
+			case KeyEvent.VK_SHIFT: return 01000;
+			case KeyEvent.VK_CONTROL: kempston |= 0x10; /* fall */
+			case KeyEvent.VK_ALT: return 02000;
+			default: return -1;
+		}
+		kempston |= 1<<(i^1);
+                return e.isAltDown() ? arrowsDefault[i] :
+                    (arrows != null ? arrows[i] : -1);
+	}
+
+	public void setArrows(String s) {
+                if (s.substring(0, 2).equals("NO")) {
+                        arrows = null;
+                        return;
+                }
+		arrows = new int[4];
+		for(int i=0; i<4; i++) {
+			int c = -1;
+			if(i<s.length())
+				c = "Caq10pE_zsw29olSxde38ikmcfr47ujnvgt56yhb"
+					.indexOf(s.charAt(i));
+			if(c<0) c = arrowsDefault[i];
+			arrows[i] = c;
+		}
+	}
+
+	/* tape */
+
+	private boolean check_load()
+	{
+		System.out.println("check_load/tape_blk="+tape_blk+" length="+tape.length);
+		int pc = cpu.pc();
+		if(cpu.ei() || pc<0x56B || pc>0x604)
 			return false;
-		}*/
+		int sp = cpu.sp();
+		if(pc>=0x5E3) {
+			pc = mem16(sp); sp=(char)(sp+2);
+			if(pc == 0x5E6) {
+				pc = mem16(sp); sp=(char)(sp+2);
+			}
+		}
+		if(pc<0x56B || pc>0x58E)
+			return false;
+		cpu.sp(sp);
+		cpu.ex_af();
 
-		int p = 0;
+		if(tape_changed || tape_ready && tape.length <= tape_blk) {
+			tape_changed = false;
+			tape_blk = 0;
+		}
+		tape_pos = tape_blk;
+		return true;
+	}
 
-		int ix = getRegister("IX");
-		int de = getRegister("DE"); //cpu.de();
-		int h, l = getRegister("HL");; h = l>>8 & 0xFF; l &= 0xFF;
-		int a = getRegister("A"); //cpu.a();
-		int f = getRegister("F"); //cpu.f();
+	private boolean loading, stop_loading;
+	private byte[] tape;
+	private int tape_blk;
+	private int tape_pos;
+	private boolean tape_changed = false;
+	private boolean tape_ready = false;
+
+	public synchronized void stop_loading()
+	{
+		stop_loading = true;
+		try {
+			while(loading) wait();
+		} catch(InterruptedException e) {
+			currentThread().interrupt();
+		}
+	}
+
+	public synchronized void tape(byte[] tape, boolean end)
+	{
+		if(tape==null)
+			tape_changed = true;
+		tape_ready = end;
+		this.tape = tape;
+	}
+
+	private final boolean do_load(byte[] tape, boolean ready)
+	{
+		System.out.println("do_load/block="+tape_blk);
+		if(tape_changed || (keyboard[7]&1)==0) {
+			cpu.f(0);
+			System.out.println("RETORNO1: "+false);
+			return false;
+		}
+
+		int p = tape_pos;
+
+		int ix = cpu.ix();
+		int de = cpu.de();
+		int h, l = cpu.hl(); h = l>>8 & 0xFF; l &= 0xFF;
+		int a = cpu.a();
+		int f = cpu.f();
 		int rf = -1;
-		
-		int tape_blk=0;
 
 		if(p == tape_blk) {
 			p += 2;
-			if(tapMax < p) {
-				if(true) {
-					popRegister("PC");//poppc(); //cpu.pc(cpu.pop());
-					setRegister ("F", 0x40); //cpu.f(cpu.FZ);
+			if(tape.length < p) {
+				if(ready) {
+					cpu.pc(cpu.pop());
+					cpu.f(cpu.FZ);
 				}
-				//return !ready;
+				System.out.println("RETORNO2: "+(rf<0));
+				return !ready;
 			}
-			tape_blk = p + (tapDemo[p-2]&0xFF | tapDemo[p-1]<<8&0xFF00);
+			tape_blk = p + (tape[p-2]&0xFF | tape[p-1]<<8&0xFF00);
 			h = 0;
 		}
 
 		for(;;) {
 			if(p == tape_blk) {
-				rf = 0x40; //cpu.FZ;
+				rf = cpu.FZ;
 				break;
 			}
-			if(p == tapDemo.length) {
-				if(true)
-					rf = 0x40; //cpu.FZ;
+			if(p == tape.length) {
+				if(ready)
+					rf = cpu.FZ;
 				break;
 			}
-			l = tapDemo[p++]&0xFF;
+			l = tape[p++]&0xFF;
 			h ^= l;
 			if(de == 0) {
 				a = h;
 				rf = 0;
 				if(a<1)
-					rf = 0x01; //cpu.FC;
+					rf = cpu.FC;
 				break;
 			}
-			if((f&0x40)==0) {
+			if((f&cpu.FZ)==0) {
 				a ^= l;
 				if(a != 0) {
 					rf = 0;
 					break;
 				}
-				f |= 0x40;
+				f |= cpu.FZ;
 				continue;
 			}
-			if((f&0x01)!=0)
-				mem[ix]=(byte)(l);
+			if((f&cpu.FC)!=0)
+				mem(ix, l);
 			else {
-				a = mem[ix] ^ l;
+				a = mem(ix) ^ l;
 				if(a != 0) {
 					rf = 0;
 					break;
@@ -370,822 +1181,81 @@ public class Spectrum48k extends jMESYSZ80 implements Runnable {
 			de--;
 		}
 
-		setRegister("IX", ix); //cpu.ix(ix);
-		setRegister("DE", de); //cpu.de(de);
-		setRegister("HL", h<<8|l); //cpu.hl(h<<8|l);
-		setRegister("A", a); //cpu.a(a);
+		cpu.ix(ix);
+		cpu.de(de);
+		cpu.hl(h<<8|l);
+		cpu.a(a);
 		if(rf>=0) {
 			f = rf;
-			popRegister("PC");//poppc(); //cpu.pc(cpu.pop());
+			cpu.pc(cpu.pop());
 		}
-		setRegister("F", f); //cpu.f(f);
-		
-		//tape_pos = p;
-		//return rf<0;
-		/*for (int i=0; i<tapMax ; i++){
-			outb(0xFF, tapDemo[i], 1);
-		}*/
-	}
-	
-	public void outb( int port, int outByte ) {
-		//System.out.println("Out Port: "+port+" byte: "+outByte);
-		if ( (port & 0x0001) == 0 ) {
-			display.newBorder = (outByte & 0x07);
-		}
-		soundByte = (outByte & 0x10) == 0 ? (byte)0x7f : (byte)0;
-		
-		// tape access
-		//if(((valor & 0x10) != (puertos[puerto & 0xff] & 0x10)) || (la_Cinta.playin())){
-		/*if ((port & 0xFF) == 0xFF){
-			int valor=soundByte;
-			ear = ((valor & 0x10) != 0 ? 0xFF : 0xBF);
-			System.out.println("Out Port: "+port+" byte: "+outByte);
-		}*/
-		
+		cpu.f(f);
+		tape_pos = p;
+		System.out.println("RETORNO3: "+(rf<0));
+		return rf<0;
 	}
 
-	/** Byte access */
-	public void pokeb( int addr, int newByte ){
-		//System.out.println("pokeb Spectrum48");
-		if (addr==22528){
-			System.out.println("Poke "+addr+"="+newByte);
-		}
-		if ( addr < 16384 ) {
-			return;
-		}
-		
-		//if ( addr >= (22528+768) ) {
-			mem[ addr ] = (byte) newByte;
-			//return;
-		//}
+	/* LOAD "" */
 
-		
+	public final void autoload()
+	{
+		rom = rom48k;
+                
+		cpu.i(0x3F);
+		int p=16384;
+		do mem(p++, 0); while(p<22528);
+		do mem(p++, 070); while(p<23296);
+		do mem(p++, 0); while(p<65536);
+		mem16(23732, --p); // P-RAMT
+		p -= 0xA7;
+                System.arraycopy(rom48k, 0x3E08, ram48k[2], p-49152, 0xA8);
+//		System.arraycopy(rom48k, 0x3E08, ram, p-16384, 0xA8);
+		mem16(23675, p--); // UDG
+		mem(23608, 0x40); // RASP
+		mem16(23730, p); // RAMTOP
+		mem16(23606, 0x3C00); // CHARS
+		mem(p--, 0x3E);
+		cpu.sp(p);
+		mem16(23613, p-2); // ERR-SP
+		cpu.iy(0x5C3A);
+		cpu.im(1);
+		cpu.ei(true);
 
-		//if ( mem[ addr ] != newByte ) {
-			//mem[ addr ] = (byte)newByte;
-			/*try {
-				
-				if ((addr >=16384) && (addr <= 22527)) {
-					//System.out.println("DIR1: "+addr);
-					display.screenPixels[addr-16384]=(byte) newByte;
-					//display.plot(addr, mem);
-					
-				} else if ( (addr >= 22528) && (addr < 23296) ){
-					//System.out.println("DIR2: "+addr);
-					display.screenAttrs[addr-22528]=(byte) newByte;
-					//display.paintBlockBack(addr, mem);
-				}
-				
-			} catch (Exception e) {
-				System.out.println("Error en método PLOT en dirección "+addr);
-				e.printStackTrace(System.out);
-			}*/
-			
-		//}	
+		mem16(23631, 0x5CB6); // CHANS
+                System.arraycopy(rom48k, 0x15AF, ram48k[0], 0x1CB6, 0x15);
+//		System.arraycopy(rom48k, 0x15AF, ram, 0x1CB6, 0x15);
+		p = 0x5CB6+0x14;
+		mem16(23639, p++); // DATAADD
+		mem16(23635, p); // PROG
+		mem16(23627, p); // VARS
+		mem(p++, 0x80);
+		mem16(23641, p); // E-LINE
+		mem16(p, 0x22EF); mem16(p+2, 0x0D22); // LOAD ""
+		mem(p+4, 0x80); p += 5;
+		mem16(23649, p); // WORKSP
+		mem16(23651, p); // STKBOT
+		mem16(23653, p); // STKEND
+
+		mem(23693, 070); mem(23695, 070); mem(23624, 070);
+		mem16(23561, 0x0523);
+
+		mem(23552, 0xFF); mem(23556, 0xFF); // KSTATE
+
+                System.arraycopy(rom48k, 0x15C6, ram48k[0], 0x1C10, 14);
+//		System.arraycopy(rom48k, 0x15C6, ram, 0x1C10, 14);
+
+		mem16(23688, 0x1821); // S-POSN
+		mem(23659, 2); // DF-SZ
+		mem16(23656, 0x5C92); // MEM
+                mem(23611, 0x0C); // FLAGS
+
+		cpu.pc(4788);
+		au_reset();
 	}
 
-	// Word access
-	public void pokew( int addr, int word ) {
-		//byte _mem[] = mem;
-		if ( addr < 16384 ) {
-			return;
-		}
-
-		//if ( addr >= (22528+768) ) {
-			mem[ addr ] = (byte) (new Integer(word).byteValue() & 0xff);
-			if ( ++addr != 65536 ) {
-				mem[ addr ] = (byte) (word >> 8);
-			}
-			return;
-		//}
-
-		
-
-		/*int        newByte0 = word & 0xff;
-		if ( mem[ addr ] != newByte0 ) {
-						
-			mem[ addr ] = (byte) newByte0;*/
-			
-			/*try {
-				
-				if ((addr >=16384) && (addr <= 22527)) {
-					display.screenPixels[addr-16384]=(byte) newByte0;
-					//display.plot(addr, mem);
-					
-				} else if ( (addr >= 22528) && (addr < 23296) ){
-					display.screenAttrs[addr-22528]=(byte) newByte0;
-					//display.paintBlockBack(addr, mem);
-				}
-				
-			} catch (Exception e) {
-				System.out.println("Error en método PLOT en dirección "+addr);
-				e.printStackTrace(System.out);
-			}*/
-		//}
-
-		/*int        newByte1 = word >> 8;
-		if ( ++addr != (22528+768) ) { 
-			if ( _mem[ addr ] != newByte1 ) {
-				try {
-					//display.plot( addr );
-				} catch (Exception e){
-					e.printStackTrace(System.out);
-				}
-				_mem[ addr ] = (byte) newByte1;
-			}
-		}
-		else {
-			_mem[ addr ] = (byte) newByte1;
-		}*/
-	}
-	
-	private final void JoystickUP( boolean down ) {
-		if ( down ) J_KEMPSTON_UP = 1; else J_KEMPSTON_UP = 0;
-	}
-	
-	private final void JoystickDOWN( boolean down ) {
-		if ( down ) J_KEMPSTON_DOWN = 1; else J_KEMPSTON_DOWN = 0;
-	}
-	
-	private final void JoystickLEFT( boolean down ) {
-		if ( down ) J_KEMPSTON_LEFT = 1; else J_KEMPSTON_LEFT = 0;
-	}
-	
-	private final void JoystickRIGHT( boolean down ) {
-		if ( down ) J_KEMPSTON_RIGHT = 1; else J_KEMPSTON_RIGHT = 0;
-	}
-	
-	private final void JoystickFIRE( boolean down ) {
-		if ( down ) J_KEMPSTON_FIRE = 1; else J_KEMPSTON_FIRE = 0;
-	}
-
-	private final void K1( boolean down ) {
-		if ( down ) _1_5 &= ~b0; else _1_5 |= b0;
-	}
-	private final void K2( boolean down ) {
-		if ( down ) _1_5 &= ~b1; else _1_5 |= b1;
-	}
-	private final void K3( boolean down ) {
-		if ( down ) _1_5 &= ~b2; else _1_5 |= b2;
-	}
-	private final void K4( boolean down ) {
-		if ( down ) _1_5 &= ~b3; else _1_5 |= b3;
-	}
-	private final void K5( boolean down ) {
-		if ( down ) _1_5 &= ~b4; else _1_5 |= b4;
-	}
-
-	private final void K6( boolean down ) {
-		if ( down ) _6_0 &= ~b4; else _6_0 |= b4;
-	}
-	private final void K7( boolean down ) {
-		if ( down ) _6_0 &= ~b3; else _6_0 |= b3;
-	}
-	private final void K8( boolean down ) {
-		if ( down ) _6_0 &= ~b2; else _6_0 |= b2;
-	}
-	private final void K9( boolean down ) {
-		if ( down ) _6_0 &= ~b1; else _6_0 |= b1;
-	}
-	private final void K0( boolean down ) {
-		if ( down ) _6_0 &= ~b0; else _6_0 |= b0;
-	}
-
-
-	private final void KQ( boolean down ) {
-		if ( down ) _Q_T &= ~b0; else _Q_T |= b0;
-	}
-	private final void KW( boolean down ) {
-		if ( down ) _Q_T &= ~b1; else _Q_T |= b1;
-	}
-	private final void KE( boolean down ) {
-		if ( down ) _Q_T &= ~b2; else _Q_T |= b2;
-	}
-	private final void KR( boolean down ) {
-		if ( down ) _Q_T &= ~b3; else _Q_T |= b3;
-	}
-	private final void KT( boolean down ) {
-		if ( down ) _Q_T &= ~b4; else _Q_T |= b4;
-	}
-
-	private final void KY( boolean down ) {
-		if ( down ) _Y_P &= ~b4; else _Y_P |= b4;
-	}
-	private final void KU( boolean down ) {
-		if ( down ) _Y_P &= ~b3; else _Y_P |= b3;
-	}
-	private final void KI( boolean down ) {
-		if ( down ) _Y_P &= ~b2; else _Y_P |= b2;
-	}
-	private final void KO( boolean down ) {
-		if ( down ) _Y_P &= ~b1; else _Y_P |= b1;
-	}
-	private final void KP( boolean down ) {
-		if ( down ) _Y_P &= ~b0; else _Y_P |= b0;
-	}
-
-
-	private final void KA( boolean down ) {
-		if ( down ) _A_G &= ~b0; else _A_G |= b0;
-	}
-	private final void KS( boolean down ) {
-		if ( down ) _A_G &= ~b1; else _A_G |= b1;
-	}
-	private final void KD( boolean down ) {
-		if ( down ) _A_G &= ~b2; else _A_G |= b2;
-	}
-	private final void KF( boolean down ) {
-		if ( down ) _A_G &= ~b3; else _A_G |= b3;
-	}
-	private final void KG( boolean down ) {
-		if ( down ) _A_G &= ~b4; else _A_G |= b4;
-	}
-
-	private final void KH( boolean down ) {
-		if ( down ) _H_ENT &= ~b4; else _H_ENT |= b4;
-	}
-	private final void KJ( boolean down ) {
-		if ( down ) _H_ENT &= ~b3; else _H_ENT |= b3;
-	}
-	private final void KK( boolean down ) {
-		if ( down ) _H_ENT &= ~b2; else _H_ENT |= b2;
-	}
-	private final void KL( boolean down ) {
-		if ( down ) _H_ENT &= ~b1; else _H_ENT |= b1;
-	}
-	private final void KENT( boolean down ) {
-		if ( down ) _H_ENT &= ~b0; else _H_ENT |= b0;
-	}
-
-
-	private final void KCAPS( boolean down ) {
-		if ( down ) _CAPS_V &= ~b0; else _CAPS_V |= b0;
-	}
-	private final void KZ( boolean down ) {
-		if ( down ) _CAPS_V &= ~b1; else _CAPS_V |= b1;
-	}
-	private final void KX( boolean down ) {
-		if ( down ) _CAPS_V &= ~b2; else _CAPS_V |= b2;
-	}
-	private final void KC( boolean down ) {
-		if ( down ) _CAPS_V &= ~b3; else _CAPS_V |= b3;
-	}
-	private final void KV( boolean down ) {
-		if ( down ) _CAPS_V &= ~b4; else _CAPS_V |= b4;
-	}
-
-	private final void KB( boolean down ) {
-		if ( down ) _B_SPC &= ~b4; else _B_SPC |= b4;
-	}
-	private final void KN( boolean down ) {
-		if ( down ) _B_SPC &= ~b3; else _B_SPC |= b3;
-	}
-	private final void KM( boolean down ) {
-		if ( down ) _B_SPC &= ~b2; else _B_SPC |= b2;
-	}
-	private final void KSYMB( boolean down ) {
-		if ( down ) _B_SPC &= ~b1; else _B_SPC |= b1;
-	}
-	private final void KSPC( boolean down ) {
-		if ( down ) _B_SPC &= ~b0; else _B_SPC |= b0;
-	}
-	
-	public void resetKeyboard() {
-		_B_SPC  = 0xff;
-		_H_ENT  = 0xff;
-		_Y_P    = 0xff;
-		_6_0    = 0xff;
-		_1_5    = 0xff;
-		_Q_T    = 0xff;
-		_A_G    = 0xff;
-		_CAPS_V = 0xff;
-	}
-	
-	public final boolean doKey( boolean down, int ascii, int mods ) {
-		boolean    CAPS = ((mods & Event.CTRL_MASK) != 0);
-		boolean    SYMB = ((mods & Event.META_MASK) != 0);
-		boolean   SHIFT = ((mods & Event.SHIFT_MASK) != 0);
-
-		// Change control versions of keys to lower case
-		if ( (ascii >= 1) && (ascii <= 0x27) && SYMB ) {
-			ascii += ('a'-1);
-		}
-
-		switch ( ascii ) {
-		case 'a':    KA( down );    break;
-		case 'b':    KB( down );    break;
-		case 'c':    KC( down );    break;
-		case 'd':    KD( down );    break;
-		case 'e':    KE( down );    break;
-		case 'f':    KF( down );    break;
-		case 'g':    KG( down );    break;
-		case 'h':    KH( down );    break;
-		case 'i':    KI( down );    break;
-		case 'j':    KJ( down );    break;
-		case 'k':    KK( down );    break;
-		case 'l':    KL( down );    break;
-		case 'm':    KM( down );    break;
-		case 'n':    KN( down );    break;
-		case 'o':    KO( down );    break;
-		case 'p':    KP( down );    break;
-		case 'q':    KQ( down );    break;
-		case 'r':    KR( down );    break;
-		case 's':    KS( down );    break;
-		case 't':    KT( down );    break;
-		case 'u':    KU( down );    break;
-		case 'v':    KV( down );    break;
-		case 'w':    KW( down );    break;
-		case 'x':    KX( down );    break;
-		case 'y':    KY( down );    break;
-		case 'z':    KZ( down );    break;
-		case '0':    K0( down );    break;
-		case '1':    K1( down );    break;
-		case '2':    K2( down );    break;
-		case '3':    K3( down );    break;
-		case '4':    K4( down );    break;
-		case '5':    K5( down );    break;
-		case '6':    K6( down );    break;
-		case '7':    K7( down );    break;
-		case '8':    K8( down );    break;
-		case '9':    K9( down );    break;
-		case ' ':    CAPS = SHIFT;  KSPC( down );  break;
-
-		case 'A':    CAPS = true;   KA( down );    break;
-		case 'B':    CAPS = true;   KB( down );    break;
-		case 'C':    CAPS = true;   KC( down );    break;
-		case 'D':    CAPS = true;   KD( down );    break;
-		case 'E':    CAPS = true;   KE( down );    break;
-		case 'F':    CAPS = true;   KF( down );    break;
-		case 'G':    CAPS = true;   KG( down );    break;
-		case 'H':    CAPS = true;   KH( down );    break;
-		case 'I':    CAPS = true;   KI( down );    break;
-		case 'J':    CAPS = true;   KJ( down );    break;
-		case 'K':    CAPS = true;   KK( down );    break;
-		case 'L':    CAPS = true;   KL( down );    break;
-		case 'M':    CAPS = true;   KM( down );    break;
-		case 'N':    CAPS = true;   KN( down );    break;
-		case 'O':    CAPS = true;   KO( down );    break;
-		case 'P':    CAPS = true;   KP( down );    break;
-		case 'Q':    CAPS = true;   KQ( down );    break;
-		case 'R':    CAPS = true;   KR( down );    break;
-		case 'S':    CAPS = true;   KS( down );    break;
-		case 'T':    CAPS = true;   KT( down );    break;
-		case 'U':    CAPS = true;   KU( down );    break;
-		case 'V':    CAPS = true;   KV( down );    break;
-		case 'W':    CAPS = true;   KW( down );    break;
-		case 'X':    CAPS = true;   KX( down );    break;
-		case 'Y':    CAPS = true;   KY( down );    break;
-		case 'Z':    CAPS = true;   KZ( down );    break;
-
-		case '!':    SYMB = true;   K1( down );   break;
-		case '@':    SYMB = true;   K2( down );   break;
-		case '#':    SYMB = true;   K3( down );   break;
-		case '$':    SYMB = true;   K4( down );   break;
-		case '%':    SYMB = true;   K5( down );   break;
-		case '&':    SYMB = true;   K6( down );   break;
-		case '\'':   SYMB = true;   K7( down );   break;
-		case '(':    SYMB = true;   K8( down );   break;
-		case ')':    SYMB = true;   K9( down );   break;
-		case '_':    SYMB = true;   K0( down );   break;
-
-		case '<':    SYMB = true;   KR( down );   break;
-		case '>':    SYMB = true;   KT( down );   break;
-		case ';':    SYMB = true;   KO( down );   break;
-		case '"':    SYMB = true;   KP( down );   break;
-		case '^':    SYMB = true;   KH( down );   break;
-		case '-':    SYMB = true;   KJ( down );   break;
-		case '+':    SYMB = true;   KK( down );   break;
-		case '=':    SYMB = true;   KL( down );   break;
-		case ':':    SYMB = true;   KZ( down );   break;
-		case '£':    SYMB = true;   KX( down );   break;
-		case '?':    SYMB = true;   KC( down );   break;
-		case '/':    SYMB = true;   KV( down );   break;
-		case '*':    SYMB = true;   KB( down );   break;
-		case ',':    SYMB = true;   KN( down );   break;
-		case '.':    SYMB = true;   KM( down );   break;
-
-		case '[':    SYMB = true;   KY( down );   break;
-		case ']':    SYMB = true;   KU( down );   break;
-		case '~':    SYMB = true;   KA( down );   break;
-		case '|':    SYMB = true;   KS( down );   break;
-		case '\\':   SYMB = true;   KD( down );   break;
-		case '{':    SYMB = true;   KF( down );   break;
-		case '}':    SYMB = true;   KF( down );   break;
-
-		case '\n':
-		case '\r':   CAPS = SHIFT; KENT( down );    break;
-		case '\t':   CAPS = true; SYMB = true; break;
-
-		case '\b':
-		case 127:    CAPS = true; K0( down );    break;
-
-		case Event.F1: CAPS = true; K1( down ); break;
-		case Event.F2: CAPS = true; K2( down ); break;
-		case Event.F3: CAPS = true; K3( down ); break;
-		case Event.F4: CAPS = true; K4( down ); break;
-		case Event.F5: CAPS = true; K5( down ); break;
-		case Event.F6: CAPS = true; K6( down ); break;
-		case Event.F7: CAPS = true; K7( down ); break;
-		case Event.F8: CAPS = true; K8( down ); break;
-		case Event.F9: CAPS = true; K9( down ); break;
-		case Event.F10: CAPS = true; K0( down ); break;
-		case Event.F11: CAPS = true; break;
- 		case Event.F12: SYMB = true; break;
-
-		case Event.LEFT:    CAPS = SHIFT; K5( down );    break;
-		case Event.DOWN:    CAPS = SHIFT; K6( down );    break;
-		case Event.UP:      CAPS = SHIFT; K7( down );    break;
-		case Event.RIGHT:   CAPS = SHIFT; K8( down );    break;
-					
-		case Event.END: {
-				if ( down ) {
-					//resetAtNextInterrupt = true;
-				}
-				break;
-			}
-		case '\033': // ESC
-		case Event.HOME: {
-				if ( down ) {
-					//pauseOrResume();
-				}
-				break;
-			}
-
-		default:
-			return false;
-		}
-
-		KSYMB( SYMB & down );
-		KCAPS( CAPS & down );
-
-		return true;
-	}
-
-	public final boolean doKey(boolean down, KeyEvent e) {
-		//System.out.println("doKey"+e.getKeyChar());
-		int ascii = e.getKeyChar();
-		int mods = e.getModifiers();
-
-		switch ( e.getKeyCode() ) {			
-			case KeyEvent.VK_LEFT:  	JoystickLEFT(down); 	break;
-			case KeyEvent.VK_DOWN:  	JoystickDOWN(down); 	break;
-			case KeyEvent.VK_UP:    	JoystickUP(down); 		break;
-			case KeyEvent.VK_RIGHT:   	JoystickRIGHT(down); 	break;
-			case KeyEvent.VK_CONTROL: 	JoystickFIRE(down); 	break;
-		}
-		
-		boolean    CAPS = ((mods & Event.CTRL_MASK) != 0);
-		boolean    SYMB = ((mods & Event.META_MASK) != 0);
-		boolean   SHIFT = ((mods & Event.SHIFT_MASK) != 0);
-
-		// Change control versions of keys to lower case
-		if ( (ascii >= 1) && (ascii <= 0x27) && SYMB ) {
-			ascii += ('a'-1);
-		}
-
-		switch ( ascii ) {
-		case 'a':    KA( down );    break;
-		case 'b':    KB( down );    break;
-		case 'c':    KC( down );    break;
-		case 'd':    KD( down );    break;
-		case 'e':    KE( down );    break;
-		case 'f':    KF( down );    break;
-		case 'g':    KG( down );    break;
-		case 'h':    KH( down );    break;
-		case 'i':    KI( down );    break;
-		case 'j':    KJ( down );    break;
-		case 'k':    KK( down );    break;
-		case 'l':    KL( down );    break;
-		case 'm':    KM( down );    break;
-		case 'n':    KN( down );    break;
-		case 'o':    KO( down );    break;
-		case 'p':    KP( down );    break;
-		case 'q':    KQ( down );    break;
-		case 'r':    KR( down );    break;
-		case 's':    KS( down );    break;
-		case 't':    KT( down );    break;
-		case 'u':    KU( down );    break;
-		case 'v':    KV( down );    break;
-		case 'w':    KW( down );    break;
-		case 'x':    KX( down );    break;
-		case 'y':    KY( down );    break;
-		case 'z':    KZ( down );    break;
-		case '0':    K0( down );    break;
-		case '1':    K1( down );    break;
-		case '2':    K2( down );    break;
-		case '3':    K3( down );    break;
-		case '4':    K4( down );    break;
-		case '5':    K5( down );    break;
-		case '6':    K6( down );    break;
-		case '7':    K7( down );    break;
-		case '8':    K8( down );    break;
-		case '9':    K9( down );    break;
-		case ' ':    CAPS = SHIFT;  KSPC( down );  break;
-
-		case 'A':    CAPS = true;   KA( down );    break;
-		case 'B':    CAPS = true;   KB( down );    break;
-		case 'C':    CAPS = true;   KC( down );    break;
-		case 'D':    CAPS = true;   KD( down );    break;
-		case 'E':    CAPS = true;   KE( down );    break;
-		case 'F':    CAPS = true;   KF( down );    break;
-		case 'G':    CAPS = true;   KG( down );    break;
-		case 'H':    CAPS = true;   KH( down );    break;
-		case 'I':    CAPS = true;   KI( down );    break;
-		case 'J':    CAPS = true;   KJ( down );    break;
-		case 'K':    CAPS = true;   KK( down );    break;
-		case 'L':    CAPS = true;   KL( down );    break;
-		case 'M':    CAPS = true;   KM( down );    break;
-		case 'N':    CAPS = true;   KN( down );    break;
-		case 'O':    CAPS = true;   KO( down );    break;
-		case 'P':    CAPS = true;   KP( down );    break;
-		case 'Q':    CAPS = true;   KQ( down );    break;
-		case 'R':    CAPS = true;   KR( down );    break;
-		case 'S':    CAPS = true;   KS( down );    break;
-		case 'T':    CAPS = true;   KT( down );    break;
-		case 'U':    CAPS = true;   KU( down );    break;
-		case 'V':    CAPS = true;   KV( down );    break;
-		case 'W':    CAPS = true;   KW( down );    break;
-		case 'X':    CAPS = true;   KX( down );    break;
-		case 'Y':    CAPS = true;   KY( down );    break;
-		case 'Z':    CAPS = true;   KZ( down );    break;
-
-		case '!':    SYMB = true;   K1( down );   break;
-		case '@':    SYMB = true;   K2( down );   break;
-		case '#':    SYMB = true;   K3( down );   break;
-		case '$':    SYMB = true;   K4( down );   break;
-		case '%':    SYMB = true;   K5( down );   break;
-		case '&':    SYMB = true;   K6( down );   break;
-		case '\'':   SYMB = true;   K7( down );   break;
-		case '(':    SYMB = true;   K8( down );   break;
-		case ')':    SYMB = true;   K9( down );   break;
-		case '_':    SYMB = true;   K0( down );   break;
-
-		case '<':    SYMB = true;   KR( down );   break;
-		case '>':    SYMB = true;   KT( down );   break;
-		case ';':    SYMB = true;   KO( down );   break;
-		case '"':    SYMB = true;   KP( down );   break;
-		case '^':    SYMB = true;   KH( down );   break;
-		case '-':    SYMB = true;   KJ( down );   break;
-		case '+':    SYMB = true;   KK( down );   break;
-		case '=':    SYMB = true;   KL( down );   break;
-		case ':':    SYMB = true;   KZ( down );   break;
-		case '£':    SYMB = true;   KX( down );   break;
-		case '?':    SYMB = true;   KC( down );   break;
-		case '/':    SYMB = true;   KV( down );   break;
-		case '*':    SYMB = true;   KB( down );   break;
-		case ',':    SYMB = true;   KN( down );   break;
-		case '.':    SYMB = true;   KM( down );   break;
-
-		case '[':    SYMB = true;   KY( down );   break;
-		case ']':    SYMB = true;   KU( down );   break;
-		case '~':    SYMB = true;   KA( down );   break;
-		case '|':    SYMB = true;   KS( down );   break;
-		case '\\':   SYMB = true;   KD( down );   break;
-		case '{':    SYMB = true;   KF( down );   break;
-		case '}':    SYMB = true;   KF( down );   break;
-
-		case '\n':
-		case '\r':   CAPS = SHIFT; KENT( down );    break;
-		case '\t':   CAPS = true; SYMB = true; break;
-
-		case '\b':
-		case 127:    CAPS = true; K0( down );    break;
-
-		case Event.F1: CAPS = true; K1( down ); break;
-		case Event.F2: CAPS = true; K2( down ); break;
-		case Event.F3: CAPS = true; K3( down ); break;
-		case Event.F4: CAPS = true; K4( down ); break;
-		case Event.F5: CAPS = true; K5( down ); break;
-		case Event.F6: CAPS = true; K6( down ); break;
-		case Event.F7: CAPS = true; K7( down ); break;
-		case Event.F8: CAPS = true; K8( down ); break;
-		case Event.F9: CAPS = true; K9( down ); break;
-		case Event.F10: CAPS = true; K0( down ); break;
-		case Event.F11: CAPS = true; break;
- 		case Event.F12: SYMB = true; break;
-
-		case Event.LEFT:    CAPS = SHIFT; K5( down );    break;
-		case Event.DOWN:    CAPS = SHIFT; K6( down );    break;
-		case Event.UP:      CAPS = SHIFT; K7( down );    break;
-		case Event.RIGHT:   CAPS = SHIFT; K8( down );    break;
-					
-		case Event.END: {
-				if ( down ) {
-					//resetAtNextInterrupt = true;
-				}
-				break;
-			}
-		case '\033': // ESC
-		case Event.HOME: {
-				if ( down ) {
-					//pauseOrResume();
-				}
-				break;
-			}
-
-		default:
-			return false;
-		}
-
-		KSYMB( SYMB & down );
-		KCAPS( CAPS & down );
-
-		return true;
-	}
-
-	public void load() {
-		System.out.println("Estoy en load");
-		//FormatSNA fSNA = new FormatSNA();
-		FormatZ80 fZ80 = new FormatZ80();
-		//FormatTAP fTAP = new FormatTAP();
-		try {
-			//String name="D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/BRUCELEE.TAP";
-			String name="D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/ADVTACTF.Z80";
-			//String name="D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/ShadowOfTheUnicorn.Z80";
-			//fZ80.loadFormat("D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/ShadowOfTheUnicorn.Z80", new FileInputStream("D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/ShadowOfTheUnicorn.Z80"), this);
-			fZ80.loadFormat(name, new FileInputStream(name), this);
-			//fSNA.loadScreen("D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/MIKIE.SNA", this);
-			//fSNA.loadFormat(name, new FileInputStream(name), this);
-			FileInputStream fi = new FileInputStream(name);
-			System.out.println("TAMAÑO="+fi.available());
-			//fTAP.loadFormat(name, fi, this);
-		} catch (Exception e){
-			e.printStackTrace(System.out);
-		}
-		
-		/*loadFromURLField();
-		display.requestFocus();*/
-	}
-
-	private void loadFromURLField() {
-		try {
-			//pauseOrResume();
-
-			//urlField.hide();
-			URL	url = new URL( "file:///workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/MIKIE.SNA" );
-			URLConnection snap = url.openConnection();
-
-			InputStream input = snap.getInputStream();
-			loadSnapshot( url.toString(), input, snap.getContentLength() );
-			input.close();
-		}
-		catch ( Exception e ) {
-			e.printStackTrace(System.out);
-		}
-	}
-	
-	public void loadSnapshot( String name, InputStream is, int snapshotLength ) throws Exception {
-		// Linux  JDK doesn't always know the size of files
-		if ( snapshotLength < 0 ) {
-			ByteArrayOutputStream os = new ByteArrayOutputStream();
-			is = new BufferedInputStream( is, 4096 );
-
-			int byteOrMinus1;
-			int i;
-
-			for ( i = 0; (byteOrMinus1 = is.read()) != -1; i++ ) {
-				os.write( (byte) byteOrMinus1 );
-			}
-
-			is = new ByteArrayInputStream( os.toByteArray() ); 
-			snapshotLength = i;
-		}
-
-		// Crude check but it'll work (SNA is a fixed size)
-		if ( (snapshotLength == 49179) ) {
-			loadSNA( name, is );
-		}
-		/*else {
-			loadZ80( name, is, snapshotLength );
-		}*/
-
-		//refreshWholeScreen();
-		resetKeyboard();
-	}
-	
-	public void loadSNA( String name, InputStream is ) throws Exception {
-		//startProgress( "Loading " + name, 27+49152 );
-		this.haltCPU();
-		//System.out.println("PC1="+PC());
-		int        header[] = new int[27];
-
-		readBytes( is, header, 0,        27 );
-		readBytes( is, mem,    16384, 49152 );
-    
-		setRegister("I", header[0] );
-
-		setRegister("HL", header[1] | (header[2]<<8) );
-		setRegister("DE", header[3] | (header[4]<<8) );
-		setRegister("BC", header[5] | (header[6]<<8) );
-		setRegister("AF", header[7] | (header[8]<<8) );
-
-		exx();
-		ex_af_af();
-
-		setRegister("HL", header[9]  | (header[10]<<8) );
-		setRegister("DE", header[11] | (header[12]<<8) );
-		setRegister("BC", header[13] | (header[14]<<8) );
-
-		setRegister("IY", header[15] | (header[16]<<8) );
-		setRegister("IX", header[17] | (header[18]<<8) );
-
-		if ( (header[19] & 0x04)!= 0 ) {
-			//IFF2( true );
-			interruptFF("IFF2", true);
-		}
-		else {
-			//IFF2( false );
-			interruptFF("IFF2", false);
-		}
-
-		setRegister("R", header[20] );
-
-		setRegister("AF", header[21] | (header[22]<<8) );
-		setRegister("SP", header[23] | (header[24]<<8) );
-
-		switch( header[25] ) {
-		case 0:
-			//IM( IM0 );
-			setInterruptMode("", 0);
-			break;
-		case 1:
-			//IM( IM1 );
-			setInterruptMode("", 1);
-			break;
-		default:
-			//IM( IM2 );
-			setInterruptMode("", 2);
-			break;
-		}
-
-		outb( 254, header[26], 0 ); // border
-     
-		/* Emulate RETN to start */
-		//IFF1( IFF2() );
-		interruptFF("IFF1", interruptFF("IFF2"));
-		REFRESH( 2 );
-		popRegister("PC"); //poppc();
-
-		/*if ( urlField != null ) {
-			urlField.setText( name );
-		}*/
-		this.resumeCPU();
-		//System.out.println("PC2="+PC());
-		
-		//OJO !!!
-		//this.execute();
-	}
-	
-	private int readBytes(InputStream is, byte[] a, int off, int n) throws Exception {
-		try {
-			BufferedInputStream bis = new BufferedInputStream( is, n );
-
-			byte buff[] = new byte[ n ];
-			int toRead = n;
-			while ( toRead > 0 ) {
-				int	nRead = bis.read( buff, n-toRead, toRead );
-				toRead -= nRead;
-				//updateProgress( nRead );
-			}
-
-			for ( int i = 0; i < n; i++ ) {
-				a[ i+off ] = (byte) ((buff[i]+256)&0xff);
-			}
-
-			return n;
-		}
-		catch ( Exception e ) {
-			System.err.println( e );
-			e.printStackTrace();
-			//stopProgress();
-			throw e;
-		}
-	}
-
-	private int readBytes( InputStream is, int a[], int off, int n ) throws Exception {
-		try {
-			BufferedInputStream bis = new BufferedInputStream( is, n );
-
-			byte buff[] = new byte[ n ];
-			int toRead = n;
-			while ( toRead > 0 ) {
-				int	nRead = bis.read( buff, n-toRead, toRead );
-				toRead -= nRead;
-				//updateProgress( nRead );
-			}
-
-			for ( int i = 0; i < n; i++ ) {
-				a[ i+off ] = (buff[i]+256)&0xff;
-			}
-
-			return n;
-		}
-		catch ( Exception e ) {
-			System.err.println( e );
-			e.printStackTrace();
-			//stopProgress();
-			throw e;
-		}
+	public jMESYSDisplay getDisplay() {
+		//System.out.println("DISPLAY="+display);
+		return display;
 	}
 	
 	public FileFormat[] getSupportedFileFormats() throws Exception {
@@ -1193,49 +1263,11 @@ public class Spectrum48k extends jMESYSZ80 implements Runnable {
 			supportedFormats = new FileFormat[] {
 				new FormatSNA(),
 				new FormatTAP(),
+				new FormatTZX(),
 				new FormatZ80()
 			};
 		}
 		
 		return supportedFormats;
 	}
-
-	@Override
-	public void run() {
-		System.out.println("RUN!!!!!!!!!!!!!!!");
-		 while (true) {
-		if (display != null ){
-			if (display.arrayFichero != null){
-		
-				// Refresco de pantalla
-				//if ( (interruptCounter % refreshRate) == 0 ) {
-				//if ( (System.currentTimeMillis()-timeOfLastRefreshedScreen) > timeOfLastRefreshedScreen ) {
-					
-					//System.arraycopy(mem, 16384, display.arrayFichero, 0, display.arrayFichero.length);
-					
-					//display.loadScreen(display.arrayFichero);
-					
-					if ((System.currentTimeMillis()-timeOfLastRefreshedScreen) > 100) {
-						display.loadScreen(display.arrayFichero);
-						display.repaint();
-						timeOfLastRefreshedScreen = System.currentTimeMillis();
-					}
-				//}
-				
-				//System.out.println(mem[16384]);
-				/*try { 
-					Thread.sleep( 500 ); 
-				} catch (Exception ignored ) {
-					System.out.println(ignored);
-				}*/
-				
-			}
-		}
-		}
-	}
-
-	
-
-	
-	
 }

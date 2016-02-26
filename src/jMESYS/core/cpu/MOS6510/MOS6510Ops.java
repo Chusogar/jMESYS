@@ -2,7 +2,7 @@ package jMESYS.core.cpu.MOS6510;
 
 import jMESYS.core.cpu.CPU;
 
-public abstract class MOS6510Ops extends CPU {
+public abstract class MOS6510Ops implements CPU {
 	/**
 	 * Definitions for the  MOS6510Core
 	 *

@@ -1,291 +1,290 @@
 package jMESYS.gui;
 
-import java.awt.AWTEvent;
-import java.awt.BorderLayout;
-import java.awt.Canvas;
 import java.awt.Color;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.Event;
-import java.awt.Graphics;
-import java.awt.Image;
-import java.awt.Label;
-import java.awt.Panel;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
-import java.awt.image.BufferedImage;
-import java.awt.image.BufferedImageOp;
-import java.awt.image.ConvolveOp;
+import java.awt.image.ColorModel;
+import java.awt.image.ImageConsumer;
+import java.awt.image.ImageProducer;
 import java.awt.image.IndexColorModel;
-import java.awt.image.Kernel;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.net.URL;
 import java.util.Vector;
 
-import javax.swing.JComponent;
-import javax.swing.JPanel;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+public abstract class jMESYSDisplay implements ImageProducer {
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+	private Vector consumers = new Vector(1);
+	private int width = 0;
+	private int height = 0;
+	
+	public int scale=0;
+	public int want_scale=0;
+	
+	public int[] currentPalette = null;
+	public boolean bwPalette = false;
+	public boolean blur = false;
+	
+	public jMESYSDisplay(int w, int h) {
+		super();
+		width = w;
+		height = h;
+		
+		setPalette(getDefaultPalette());
+	}
+	
+	// abstract methods
+	public abstract void force_redraw();
+	public abstract void update_screen(ImageConsumer ic);
+	public abstract int[] getDefaultPalette();
+	
+	/* ImageProducer */
+	/*static byte[] palcolor(int m) {
+		System.out.println("Paleta "+m);
+		byte a[] = new byte[16];
+		for(int n=0; n<8; n++) if((n&m)!=0) {
+			a[n] = (byte)0xCD;
+			a[n+8] = (byte)0xFF;
+		}
+		for (int i=0 ; i<16 ; i++){
+			System.out.println(a[i]&0xFF);
+		}
+		return a;
+	}*/
 
-public abstract class jMESYSDisplay extends JComponent {
+	//public static ColorModel cm = new IndexColorModel(8, 16,
+	//	palcolor(2), palcolor(4), palcolor(1));
+	public static ColorModel cm = null;
+	
+	public void update_screen() {
+		for(int i=0; i<consumers.size();) {
+			ImageConsumer c = (ImageConsumer)
+				consumers.elementAt(consumers.size() - ++i);
+			update_screen(c);
+		}
+	}
+	
+	public synchronized void addConsumer(ImageConsumer ic)
+	{
+		try {
+			ic.setDimensions(width*scale, height*scale);
+			consumers.addElement(ic); // XXX it may have been just removed
+			ic.setHints(ic.RANDOMPIXELORDER|ic.SINGLEPASS);
+			if(isConsumer(ic)) ic.setColorModel(cm);
+			force_redraw();
+		} catch(Exception e) {
+			if(isConsumer(ic))
+				ic.imageComplete(ImageConsumer.IMAGEERROR);
+		}
+	}
+	
+	public boolean isConsumer(ImageConsumer ic)
+	{
+		return consumers.contains(ic);
+	}
 
-		public static Image imagenTV;
-		//private static BufferedImage imgScreen;
-		//private static Graphics graphScreen = null;
-		//public static JPanel borderPanel = new JPanel();
-		public static JPanel screenPanel = new JPanel();
-		public static boolean paintWholeScreen = true;
-		
-		public static int pixelScale=1;
-		
-		//public static int PAN_START=0;
-		//public static int ATR_START=0;
-		public static int FRAME_WIDTH=256; 
-		public static int FRAME_HEIGHT=192;
-		public static int FRAME_MARGINH=10;
-		public static int FRAME_MARGINV=10;
-		
-		public int[] currentPalette = null;
-		public boolean bwPalette = false;
-		public boolean blur = false;
-		
-		/*protected static byte[] palcolor(int m) {
-			byte a[] = new byte[16];
-			for(int n=0; n<8; n++) if((n&m)!=0) {
-				a[n] = (byte)0xCD;
-				a[n+8] = (byte)0xFF;
-			}
-			return a;
-		}*/
-		
-		// abstract methods
-		public abstract void doPaintWholeScreen(Graphics gi);
-		public abstract Image getScreenImage();
-		public abstract Image getBorderImage();
-		public abstract void initScreen();
-		public abstract int[] getDefaultPalette();
-		public abstract int getTotalWidth();
-		public abstract int getTotalHeight();
-		
-		public int[] getPalette() {
-			return currentPalette;
-		}
-		
-		public void setPalette( int[] pal ) {
-			bwPalette = false;
-			currentPalette = pal;
-		}
-		
-		public void setBWPalette() {
-			bwPalette = true;
-			
-			currentPalette = getBWPalette();
-		}
-		
-		public int[] getBWPalette () {
-			
-			int numColors = getPalette().length;
-			
-			int[] bwPalette = new int[numColors];
-		
-			for (int i=0 ; i<numColors ; i++){
-				Color originalColor = new Color (getPalette()[i]);
-				double meanR = originalColor.getRed()*0.3;
-				double meanG = originalColor.getGreen()*0.59;
-				double meanB = originalColor.getBlue()*0.11;
+	public synchronized void removeConsumer(ImageConsumer ic)
+	{
+		consumers.removeElement(ic);
+	}
 
-				int avg = ((new Double(meanR)).intValue() + (new Double(meanG)).intValue() + (new Double(meanB)).intValue());
-				
-				bwPalette[i] = avg<<16 | avg<<8 | avg;
-			}
+	public void startProduction(ImageConsumer ic)
+	{
+		addConsumer(ic);
+	}
+	
+	public void requestTopDownLeftRightResend(ImageConsumer ic) {}
+
+	public void abort_consumers()
+	{
+		for(;;) {
+			int s = consumers.size();
+			if(s == 0) break;
+			s--;
+			ImageConsumer c = (ImageConsumer)consumers.elementAt(s);
+			consumers.removeElementAt(s);
+			c.imageComplete(ImageConsumer.IMAGEABORTED);
+		}
+	}
+
+	public int getWidth() {
+		//System.out.println("getWidth="+width);
+		return width;
+	}
+
+	public int getHeight() {
+		return height;
+	}
+	
+	public int[] getPalette() {
+		if (currentPalette == null) {
+			currentPalette = getDefaultPalette();
+		}
+		return currentPalette;
+	}
+	
+	public void setPalette( int[] pal ) {
+		bwPalette = false;
+		currentPalette = pal;
+		
+		int numColors = pal.length;
+		
+		byte[] colR = new byte[numColors];
+		byte[] colG = new byte[numColors];
+		byte[] colB = new byte[numColors];
+		
+		for (int i=0; i<numColors ; i++){
+			Color col = new Color (pal[i]);
 			
-			return bwPalette;
+			colR[i] = (byte) (col.getRed());
+			colG[i] = (byte) (col.getGreen());
+			colB[i] = (byte) (col.getBlue());
 		}
 		
-		public jMESYSDisplay(){
-			super();
-			//enableEvents(AWTEvent.KEY_EVENT_MASK);
-		}
+		cm = new IndexColorModel(8, 16,
+				colR, colG, colB);
 		
-		/*public Image getBufferedScreenImage() {
-			return imgScreen;
-		}*/
+		force_redraw();
+	}
+	
+	public void setBWPalette() {
 		
-		public void paintBuffer() {
-			//canvasGraphics.drawImage( bufferImage, 0, 0, null );
-	 		//borderPaint();
-		}
+		currentPalette = getBWPalette();
+		bwPalette = true;
 		
-		public InputStream openFile(String name) throws Exception {
-		   
-		    InputStream result;
-		  
-		      result = new FileInputStream(name);
-		  
-		    return result;
-		  }
+		force_redraw();
+	}
+	
+	public int[] getBWPalette () {
 		
-		/*public void plot(int x, int y, Color tcolor) {
-			//if (graphScreen == null){
-			//	System.out.println("Creamos buffer de video");
-			//	imgScreen = new BufferedImage(FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale,BufferedImage.TYPE_INT_RGB);
-			//	graphScreen = imgScreen.getGraphics();
-			//}
-			Graphics gi = getScreenImage().getGraphics();
-			gi.setColor(tcolor);
-			gi.fillRect(x*pixelScale, y*pixelScale, pixelScale, pixelScale);
-			graphScreen.setColor(tcolor);
-			graphScreen.fillRect(x*pixelScale, y*pixelScale, pixelScale, pixelScale);
-		}*/
+		int numColors = getDefaultPalette().length;
 		
+		int[] bwPalette = new int[numColors];
 		
-	    public void paintComponent(Graphics g) {
-	    	//System.out.println("paintComponent jMESYSDisplay");
-	    	//kk
-	    	//g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, getTotalWidth(), getTotalHeight(), null);
-	    	
-	    	g.drawImage(getBorderImage(), 0, 0, (FRAME_WIDTH*pixelScale)+(FRAME_MARGINH*2), (FRAME_HEIGHT*pixelScale)+(FRAME_MARGINV*2), null);
-	    	//g.drawImage(getScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
-	    	g.drawImage(getFilteredScreenImage(), FRAME_MARGINH, FRAME_MARGINV, FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, null);
-		}
-	    		
-		
-		
-		private Image getFilteredScreenImage() {
-			BufferedImage OutImage;
+		byte[] colR = new byte[numColors];
+		byte[] colG = new byte[numColors];
+		byte[] colB = new byte[numColors];
+	
+		for (int i=0 ; i<numColors ; i++){
+			Color originalColor = new Color (getDefaultPalette()[i]);
+			double meanR = originalColor.getRed()*0.3;
+			double meanG = originalColor.getGreen()*0.59;
+			double meanB = originalColor.getBlue()*0.11;
+
+			int avg = ((new Double(meanR)).intValue() + (new Double(meanG)).intValue() + (new Double(meanB)).intValue());
 			
-			if (blur) {
-				float[] matrix = {
-			        0.1f, 0.1f, 0.1f, 
-			        0.1f, 0.1f, 0.1f, 
-			        0.1f, 0.1f, 0.1f, 
-			    };
-				
-				BufferedImageOp op = new ConvolveOp( new Kernel(3, 3, matrix) );
-				BufferedImage destImage=new BufferedImage(FRAME_WIDTH*pixelScale, FRAME_HEIGHT*pixelScale, BufferedImage.TYPE_INT_ARGB);
-				OutImage = op.filter( (BufferedImage)getScreenImage(), destImage);
+			bwPalette[i] = avg<<16 | avg<<8 | avg;
+			colR[i] = colG[i] = colB[i] = (byte) (bwPalette[i] & 0xFF);
+			//System.out.println("["+(colR[i]&0xFF)+", "+colG[i]+", "+colB[i]+"]");
+		}
+		
+		cm = new IndexColorModel(8, 16,
+				colR, colG, colB);
+		
+		return bwPalette;
+	}
+	
+	public void setGreenPalette() {
+		
+		currentPalette = getGreenPalette();
+		bwPalette = false;
+		
+		force_redraw();
+	}
+	
+	public int[] getGreenPalette () {
+		
+		int numColors = getBWPalette().length;
+		
+		int[] greenPalette = new int[numColors];
+		
+		byte[] colR = new byte[numColors];
+		byte[] colG = new byte[numColors];
+		byte[] colB = new byte[numColors];
+		
+		int[] originalMonPalette = getBWPalette();
+	
+		for (int i=0 ; i<numColors ; i++){
+			Color originalColor = new Color (originalMonPalette[i]);
+			double meanR = 0.0;
+			double meanG = originalColor.getGreen();
+			double meanB = 0.0;
+
+			colR[i] = colB[i] = 0;
+			colG[i] = (byte) (new Double(meanG).intValue() & 0xFF);
+						
+			int compR = ((colR[i])<<16) & 0xFF0000;
+			int compG = ((colG[i])<<8) & 0x00FF00;
+			int compB = (colB[i]) & 0xFF;
+			
+			int avg = ( compR | compG | compB) & 0xFFFFFF;
+			
+			greenPalette[i] = avg;
+			//System.out.println("R="+(colR[i]&0xFF)+" G="+(colG[i]&0xFF)+" B="+(colB[i]&0xFF)+" --> "+avg);
+		}
+		
+		cm = new IndexColorModel(8, 16,
+				colR, colG, colB);
+		
+		return greenPalette;
+	}
+	
+	public void setOrangePalette() {
+		
+		currentPalette = getOrangePalette();
+		bwPalette = false;
+		
+		force_redraw();
+	}
+	
+	public int[] getOrangePalette () {
+		
+		int numColors = getBWPalette().length;
+		
+		int[] orangePalette = new int[numColors];
+		
+		byte[] colR = new byte[numColors];
+		byte[] colG = new byte[numColors];
+		byte[] colB = new byte[numColors];
+	
+		for (int i=0 ; i<numColors ; i++){
+			Color originalColor = new Color (getBWPalette()[i]);
+			double meanR = originalColor.getRed();
+			double meanG = originalColor.getGreen();
+			double meanB = 0.0;
+			
+			if (i==0){
+				colR[i] = colG[i] = colB[i] = 0;
+			} else if (i == (numColors-1)) {
+				colR[i] = (byte) 0xFF;
+				colG[i] = (byte) 0xE3;
+				colB[i] = (byte) 0x34;
+			} else if ((meanR==meanG) &&(meanG==meanB) && (meanB==0.0)) {
+				colR[i] = colG[i] = colB[i] = 0;
 			} else {
-				//OutImage = (BufferedImage) getScreenImage();
-				return getScreenImage();
+			
+				colR[i] = (byte) ((originalColor.getRed()+10) & 0xFF);
+				colG[i] = (byte) ((originalColor.getGreen()-10) & 0xFF);
+				colB[i] = 0;
 			}
+			int compR = ((colR[i])<<16) & 0xFF0000;
+			int compG = ((colG[i])<<8) & 0x00FF00;
+			int compB = (colB[i]) & 0xFF;
 			
-			return OutImage;
-		}
-		public Vector readContents(String address) throws IOException
-	    {
-	        Vector v=new Vector();
-	        
-			StringBuilder contents = new StringBuilder(2048);
-	        BufferedReader br = null;
-
-	        try
-	        {
-	            URL url = new URL(address);
-	            br = new BufferedReader(new InputStreamReader(url.openStream()));
-	            String line = "";
-	            while (line != null)
-	            {
-	                line = br.readLine();
-	                //contents.append(line);
-	                
-	                // buscamos el trozo
-	                String strIni = "";
-	                if (line != null) {
-		                if (line.indexOf("<li><a href=\"") != -1){
-		                	line = line.replace("<li><a href=\"", "");
-		                	if (line.indexOf("\">") != -1){
-			                	line = line.substring(0, line.indexOf("\">"));
-			                	if (line.contains(".scr")){
-			                		System.out.println(address+"/"+line);
-			                		v.addElement(address+"/"+line);
-			                	}
-		                	}
-		                }
-	                }
-	            }
-	        }
-	        finally
-	        {
-	            close(br);
-	        }
-	        
-	        System.out.println(contents.toString());
-
-	        return v;
-	    }
-
-	    private static void close(Reader br)
-	    {
-	        try
-	        {
-	            if (br != null)
-	            {
-	                br.close();
-	            }
-	        }
-	        catch (Exception e)
-	        {
-	            e.printStackTrace();
-	        }
-	    }
-
-
-		public Vector listWOS(String letra) {
-			Vector listado = new Vector();
+			int avg = ( compR | compG | compB) & 0xFFFFFF;
 			
-			int numEntradas = 0;
-			String URL_WoS = "http://www.worldofspectrum.org/pub/sinclair/screens/load/"+letra+"/scr";
+			//System.out.println("R="+(colR[i]&0xFF)+" G="+(colG[i]&0xFF)+" B="+(colB[i]&0xFF)+" --> "+avg);
 			
-			try {
-				listado = readContents(URL_WoS);
-			} catch (Exception e) {
-				e.printStackTrace(System.out);
-			}
-			
-			return listado;
-		}
-		public void setBlur(boolean b) {
-			blur = b;
+			orangePalette[i] = avg;
 		}
 		
-		/*public void readWosPage (String address) throws Exception {
-			DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory
-			        .newInstance();
-			    DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
-			    Document document = docBuilder.parse(new URL(address).openStream());
-			    //doSomething(document.getDocumentElement());
-			    NodeList elem = document.getElementsByTagName("a");
-			    int numElem = elem.getLength();
-			    
-			    for (int i=0 ; i<numElem ; i++){
-			    	Element currentElem = (Element) elem.item(i);
-			    	System.out.println(currentElem.getNodeValue());
-			    }
-		}*/
+		cm = new IndexColorModel(8, 16,
+				colR, colG, colB);
 		
-		/*public boolean handleEvent( Event e ) {
-			System.out.println("Evento: "+e.id);
-			return true;
-		}*/
-
-		
+		return orangePalette;
+	}
+	
+	public void setBlur(boolean b) {
+		blur = b;
+	}
+	
+	public boolean getBlur() {
+		return blur;
+	}	
+	
 }

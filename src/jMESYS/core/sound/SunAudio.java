@@ -1,168 +1,92 @@
 package jMESYS.core.sound;
 
-import jMESYS.core.util.Util;
+import java.io.InputStream;
 
-import java.io.*;
-
-import sun.audio.*;
 import sun.audio.AudioPlayer;
 
-/**
- * Title:        JEMU
- * Description:  The Java Emulation Platform
- * Copyright:    Copyright (c) 2002
- * Company:
- * @author
- * @version 1.0
- */
+public class SunAudio extends Audio {
+		InputStream is;
+		byte[] out;
+		int outp, outl;
 
-public class SunAudio extends SoundPlayer implements Runnable {
-  
-  protected AudioStream stream;
-  protected boolean playing = false;
-  protected int samples;
-  protected boolean stereo;
-  protected int writeAhead = Util.determineJVM() == Util.JVM_UNKNOWN ? 800 : 600;
-  protected AudioPlayer player = AudioPlayer.player;
+		SunAudio() {
+			mul = 8000;
 
-  public SunAudio(int samples, boolean stereo) {
-    this.samples = samples;
-    this.stereo = stereo;
-    init();
-  }
-  
-  protected void init() {
-    stream = new AudioStream(samples);
-  }
-  
-  public int getSampleRate() {
-    return 8000;
-  }
-  
-  public void play() {
-    if (!playing) {
-      //sync();
-      playing = true;
-      Thread thread = new Thread(this);
-      thread.setPriority(Thread.MAX_PRIORITY);
-      thread.start();
-    }
-  }
+			is = new InputStream() {
+				public int read() {
+					byte b[] = new byte[1];
+					int v = read(b, 0, 1);
+					return v>=0 ? b[0]&0xFF : v;
+				}
 
-  public void stop() {
-    if (playing) {
-      player.stop(stream);
-      playing = false;
-    }
-  }
+				public int read(byte b[], int p, int l) {
+					outp = p;
+					outl = l;
+					out = b;
+					synchronized(b) {
+						while(outl > 0) try {
+							if(is == null)
+								return -1;
+							b.wait();
+						} catch(InterruptedException x) {
+							Thread.currentThread().interrupt();
+							break;
+						}
+					}
+					return l-outl;
+				}
+			};
+			// XXX deadlock
+			AudioPlayer.player.start(is);
+		}
 
-  public void sync() {
-    stream.sync();
-  }
-  
-  public void run() {
-    if (playing)
-      player.start(stream);
-    while (playing) {
-      try {
-        Thread.sleep(1);
-      } catch(Exception e) {
-        e.printStackTrace();
-      }
-    }
-  }
+		int flush(int p) {
+			while(out == null)
+				return p-2;
 
-  public void writeMono(int value) {
-    switch(format) {
-      case SoundUtil.ULAW:   stream.writeulaw((byte)value); break;
-      case SoundUtil.PCM8:   stream.writeulaw(SoundUtil.pcm8ToULaw((byte)value)); break;
-      case SoundUtil.UPCM8:  stream.writeulaw(SoundUtil.upcm8ToULaw((byte)value)); break;
-      case SoundUtil.PCM16:  stream.writeulaw(SoundUtil.pcm16ToULaw(value)); break;
-      case SoundUtil.UPCM16: stream.writeulaw(SoundUtil.upcm16ToULaw(value)); break;
-    }
-  }
+			p >>= 1;
+			int n = outl;
+			if(n>p) n=p;
+			convert(n);
+			outp += n;
+			outl -= n;
+			if(outl <= 0) synchronized(out) {
+				out.notify();
+				out = null;
+			}
+			p -= n;
+			if(p>0)
+				System.arraycopy(buf,2*n, buf,0, 2*p);
+			return 2*p;
+		}
 
-  public void writeStereo(int a, int b) {
-    stream.writeulaw((byte)(a | b));  // TODO: How does this sound??? Not using anyway
-    switch(format) {
-      case SoundUtil.ULAW:   stream.writeulaw((byte)(a | b)); break;
-      case SoundUtil.PCM8:   stream.writeulaw(SoundUtil.pcm8ToULaw((byte)(a | b))); break;
-      case SoundUtil.UPCM8:  stream.writeulaw(SoundUtil.upcm8ToULaw((byte)(a | b))); break;
-      case SoundUtil.PCM16:  stream.writeulaw(SoundUtil.pcm16ToULaw(a + b)); break;
-      case SoundUtil.UPCM16: stream.writeulaw(SoundUtil.upcm16ToULaw(a + b)); break;
-    }
-  }
+		public void close() {
+			is = null;
+			if(out!=null) synchronized(out) {
+				out.notify();
+			}
+		}
 
-  public void setWriteAhead(int value) {
-    writeAhead = value;
-  }
+		private void convert(int sp) {
+			int dp = outp + sp;
+			sp *= 2;
+			do {
+				int v = buf[--sp]<<8;
+				v += buf[--sp];
 
-  protected class AudioStream extends InputStream {
+				int x=0x0F;
+				if(v<0) {v=-v; x=0x8F;}
+				v = v+0x84 >> 3;
+				if(v>=256) {
+					v >>= 4; x-=0x40;
+					if(v>=256) v=255;
+				}
+				if(v>=64) {v >>= 2; x-=0x20;}
+				if(v>=32) {v >>= 1; x-=0x10;}
+		
+				out[--dp] = (byte)(x - v);
+			} while(sp>0);
+		}
+	}
 
-    byte[] buffer;
-    int pos = 0;
-    int wrPos = 0;
-    int size = 0;
 
-    protected AudioStream(int samples) {
-      buffer = new byte[samples];
-    }
-
-    public int read() {
-      waitForData(1);
-      int result = (int)(buffer[pos] & 0xff);
-      pos = (pos + 1) % buffer.length;
-      size--;
-      return result;
-    }
-    
-    public void waitForData(int count) {
-      while (size < count) {
-        synchronized(this) {
-          try {
-            wait();
-          } catch(Exception e) {
-            e.printStackTrace();
-          }
-        }
-      }
-    }
-
-    public int read(byte[] buff, int offs, int len) {
-      waitForData(len);
-      int end = len + offs;
-      for (; offs < end; offs++) {
-        buff[offs] = buffer[pos];
-        pos = (pos + 1) % buffer.length;
-      }
-      size -= len;
-      return len;
-    }
-
-    public void writeulaw(byte value) {
-      buffer[wrPos] = value;
-      wrPos = (wrPos + 1) % buffer.length;
-      size++;
-      synchronized(this) {
-        notify();
-      }
-    }
-
-    public int available() {
-      return 8000;
-    }
-
-    public void close() {
-      playing = false;
-    }
-
-    public void sync() {
-      /*int newPos = wrPos - writeAhead;
-      while (newPos < 0)
-        newPos += buffer.length;
-      pos = newPos; */
-    }
-    
-  }
-
-}

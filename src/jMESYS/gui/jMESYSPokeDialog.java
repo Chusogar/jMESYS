@@ -2,6 +2,7 @@ package jMESYS.gui;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -44,8 +45,8 @@ public class jMESYSPokeDialog extends JDialog implements ActionListener {
 		this.option = option;
 	}
 
-	public jMESYSPokeDialog(JFrame parent, String title, boolean modal) {
-		super(parent, title, modal);
+	public jMESYSPokeDialog(Frame frame2, String title, boolean modal) {
+		super(frame2, title, modal);
 		
 		// address
 		JPanel panSup = new JPanel();
@@ -74,7 +75,7 @@ public class jMESYSPokeDialog extends JDialog implements ActionListener {
 		panButtons.add(butOK);
 		panButtons.add(butCancel);
 		
-		frame = new JDialog(parent, title, modal);
+		frame = new JDialog(frame2, title, modal);
 		frame.getContentPane().setLayout(new BorderLayout());
 		frame.getContentPane().add(panSup,BorderLayout.CENTER);
 		frame.getContentPane().add(panButtons,BorderLayout.SOUTH);

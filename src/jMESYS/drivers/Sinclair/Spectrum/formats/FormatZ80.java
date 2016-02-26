@@ -6,11 +6,14 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
+import java.io.IOException;
 //import java.io.FileInputStream;
 import java.io.InputStream;
 
 import jMESYS.core.cpu.CPU;
-import jMESYS.drivers.Sinclair.Spectrum.SpectrumDisplay;
+import jMESYS.core.cpu.z80.Z80;
+import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
+import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
 import jMESYS.files.FileFormat;
 import jMESYS.gui.jMESYSDisplay;
 
@@ -26,6 +29,7 @@ public class FormatZ80 extends FileFormat {
 	}
 	
 	public byte[] loadFormatScreen(String name, InputStream is) throws Exception {
+		
 		/*int        header[] = new int[30];
 		boolean    compressed = false;
 				
@@ -195,309 +199,77 @@ public class FormatZ80 extends FileFormat {
 	}
 	
 	
-	public void loadFormat(String name, InputStream is, CPU cpu) throws Exception {
-		int        header[] = new int[30];
-		boolean    compressed = false;
-		
-		File fis = new File(name);
-		int bytesLeft = (new Long(fis.length())).intValue();
-		
-		/*ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+	public void loadFormat(String name, InputStream is, Spectrum48k computer) throws Exception {
+		DataInputStream in = new DataInputStream(is);
+		computer.reset();
+		Z80 cpu = computer.cpu;
 
-		int nRead;
-		byte[] databuf = new byte[16384];
+		cpu.a(get8(in)); cpu.f(get8(in));
+		cpu.bc(get16(in));
+		cpu.hl(get16(in));
+		int pc = get16(in);
+		cpu.pc(pc);
+		cpu.sp(get16(in));
+		cpu.i(get8(in));
+		int f1 = get16(in);
+		cpu.r(f1&0x7F | f1>>1&0x80);
+		f1 >>>= 8; if(f1==0xFF) f1 = 0;
+		computer.out(0xFE, f1>>1 & 7);
+		cpu.de(get16(in));
 
-		while ((nRead = bis.read(databuf, 0, databuf.length)) != -1) {
-		  buffer.write(databuf, 0, nRead);
-		}
+		cpu.exx(); cpu.ex_af();
+		cpu.bc(get16(in)); cpu.de(get16(in)); cpu.hl(get16(in));
+		cpu.a(get8(in)); cpu.f(get8(in));
+		cpu.exx(); cpu.ex_af();
 
-		buffer.flush();
-		byte[] buf = buffer.toByteArray();
-		ByteArrayInputStream is = new ByteArrayInputStream(buf);
-		int bytesLeft = buf.length;*/
-		//int bytesLeft = is.available();
-		System.out.println(bytesLeft);
+		cpu.iy(get16(in)); cpu.ix(get16(in));
+		int v = get8(in);
+		cpu.iff((v==0?0:1) | (get8(in)==0?0:2));
+		cpu.im(get8(in));
 
-		bytesLeft -= readBytes( is, header, 0, 30 );
-
-		cpu.setRegister("A", header[0] );
-		cpu.setRegister("F", header[1] );
-     
-		cpu.setRegister("C", header[2] );
-		cpu.setRegister("B", header[3] );
-		cpu.setRegister("L", header[4] );
-		cpu.setRegister("H", header[5] );
-
-		cpu.setRegister("PC", header[6] | (header[7]<<8) );
-		cpu.setRegister("SP", header[8] | (header[9]<<8) );
-
-		cpu.setRegister("I", header[10] );
-		cpu.setRegister("R", header[11] );
-
-		int tbyte = header[12];
-		if ( tbyte == 255 ) {
-			tbyte = 1;
-		}
-
-		//cpu.outb( 254, ((tbyte >> 1) & 0x07), 0 ); // border
-		cpu.outb( 254, ((tbyte >> 1) & 0x07)); // border
-
-		if ( (tbyte & 0x01) != 0 ) {
-			cpu.setRegister("R", cpu.getRegister("R") | 0x80 );
-		}
-		compressed = ((tbyte & 0x20) != 0);
-     
-		cpu.setRegister("E", header[13] );
-		cpu.setRegister("D", header[14] );
-
-		cpu.ex_af_af();
-		cpu.exx();
-
-		cpu.setRegister("C", header[15] );
-		cpu.setRegister("B", header[16] );
-		cpu.setRegister("E", header[17] );
-		cpu.setRegister("D", header[18] );
-		cpu.setRegister("L", header[19] );
-		cpu.setRegister("H", header[20] );
-
-		cpu.setRegister("A", header[21] );
-		cpu.setRegister("F", header[22] );
-
-		cpu.ex_af_af();
-		cpu.exx();
-
-		cpu.setRegister("IY", header[23] | (header[24]<<8) );
-		cpu.setRegister("IX", header[25] | (header[26]<<8) );
-
-		cpu.interruptFF("IFF1", (header[27] != 0) );
-		cpu.interruptFF("IFF2", header[28] != 0 );
-
-		switch ( header[29] & 0x03 ) {
-		case 0:
-			cpu.setInterruptMode(null, 0 );
-			break;
-		case 1:
-			cpu.setInterruptMode(null, 1 );
-			break;
-		default:
-			cpu.setInterruptMode(null, 2 );
-			break;
-		}
-
-		if ( cpu.getRegister("PC") == 0 ) {
-			loadZ80_extended( is, bytesLeft, cpu );
-
+		if(pc != 0) {
+			if((f1&0x20)!=0)
+				uncompress_z80(computer, in, 16384, 49152);
+			else
+				poke_stream(computer, in, 16384, 49152);
 			return;
 		}
 
-		/* Old format Z80 snapshot */
-    
-		if ( compressed ) {
-			int data[] = new int[ bytesLeft ];
-			int addr   = 16384;
+		int l = get16(in);
+		cpu.pc(get16(in));
+		int hm = get8(in);
+		if(hm>1) System.out.println("Unsupported model: #"+hm);
+		get8(in);
+		if(get8(in)==0xFF) {
+			if(computer.if1rom != null) {
+                          /** @todo if1rom */
+                          //spectrum.rom = spectrum.if1rom;
+                        }
+		}
+		if((get8(in)&4)!=0 && computer.ay_enabled && l>=23) {
+			computer.ay_idx = (byte)(get8(in) & 15);
+			for(int i=0;i<16;i++)
+				computer.ay_write(i, get8(in));
+			l -= 17;
+		}
+		in.skip(l-6);
 
-			int size = readBytes( is, data, 0, bytesLeft );
-			int i    = 0;
-
-			while ( (addr < 65536) && (i < size) ) {
-				tbyte = data[i++];
-				if ( tbyte != 0xed ) {
-					cpu.pokeb( addr, tbyte );
-					addr++;
-				}
-				else {
-					tbyte = data[i++];
-					if ( tbyte != 0xed ) {
-						cpu.pokeb( addr, 0xed );
-						i--;
-						addr++;
-					}
-					else {
-						int        count;
-						count = data[i++];
-						tbyte = data[i++];
-						while ( (count--) != 0 ) {
-							cpu.pokeb( addr, tbyte );
-							addr++;
-						}
-					}
-				}
+		for(;;) {
+			l = get16(in);
+			int a;
+			switch(get8(in)) {
+				case 8: a = 0x4000; break;
+				case 4: a = 0x8000; break;
+				case 5: a = 0xC000; break;
+				default: in.skip(l); continue;
 			}
-		}
-		else {
-			readBytes( is, cpu.getMem(), 16384, 49152 );
-		}
-
-		
-	}
-
-	private void loadZ80_extended(InputStream is, int bytesLeft, CPU cpu) throws Exception {
-		int header[] = new int[2];
-		bytesLeft -= readBytes( is, header, 0, header.length );
-
-		int type = header[0] | (header[1] << 8);
-
-		switch( type ) {
-		case 23: /* V2.01 */
-			loadZ80_v201( is, bytesLeft, cpu );
-			break;
-		case 54: /* V3.00 */
-			loadZ80_v300( is, bytesLeft, cpu );
-			break;
-		case 58: /* V3.01 */
-			loadZ80_v301( is, bytesLeft, cpu );
-			break;
-		default:
-			throw new Exception( "Z80 (extended): unsupported type " + type );
+			if(l == 0xFFFF)
+				poke_stream(computer, in, a, 16384);
+			else
+				uncompress_z80(computer, in, a, 16384);
 		}
 	}
 
-	private void loadZ80_v201(InputStream is, int bytesLeft, CPU cpu) throws Exception {
-		int header[] = new int[23];
-		bytesLeft -= readBytes( is, header, 0, header.length );
-
-		cpu.setRegister("PC", header[0] | (header[1]<<8) );
-
-		/* 0 - 48K
-		 * 1 - 48K + IF1
-		 * 2 - SamRam
-		 * 3 - 128K
-		 * 4 - 128K + IF1
-		 */
-		int type = header[2];
-	
-		if ( type > 1 ) {
-			throw new Exception( "Z80 (v201): unsupported type " + type );
-		}
-		
-		int data[] = new int[ bytesLeft ];
-		readBytes( is, data, 0, bytesLeft );
-
-		for ( int offset = 0, j = 0; j < 3; j++ ) {
-			offset = loadZ80_page( data, offset, cpu );
-		}
-	}
-
-	private void loadZ80_v300( InputStream is, int bytesLeft, CPU cpu ) throws Exception {
-		int        header[] = new int[54];
-		bytesLeft -= readBytes( is, header, 0, header.length );
-
-		cpu.setRegister("PC", header[0] | (header[1]<<8) );
-
-		/* 0 - 48K
-		 * 1 - 48K + IF1
-		 * 2 - 48K + MGT
-		 * 3 - SamRam
-		 * 4 - 128K
-		 * 5 - 128K + IF1
-		 * 6 - 128K + MGT
-		 */
-		int type = header[2];
-		
-		//System.out.println(type);
-		//System.out.println(bytesLeft);
-	
-		if ( type > 6 ) {
-			throw new Exception( "Z80 (v300): unsupported type " + type );
-		}
-		
-		int data[] = new int[ bytesLeft ];
-		readBytes( is, data, 0, bytesLeft );
-
-		for ( int offset = 0, j = 0; j < 3; j++ ) {
-			offset = loadZ80_page( data, offset, cpu );
-		}
-	}
-
-	private void loadZ80_v301( InputStream is, int bytesLeft, CPU cpu ) throws Exception {
-		int        header[] = new int[58];
-		bytesLeft -= readBytes( is, header, 0, header.length );
-
-		cpu.setRegister("PC", header[0] | (header[1]<<8) );
-
-		/* 0 - 48K
-		 * 1 - 48K + IF1
-		 * 2 - 48K + MGT
-		 * 3 - SamRam
-		 * 4 - 128K
-		 * 5 - 128K + IF1
-		 * 6 - 128K + MGT
-		 * 7 - +3
-		 */
-		int type = header[2];
-	
-		if ( type > 7 ) {
-			throw new Exception( "Z80 (v301): unsupported type " + type );
-		}
-		
-		int data[] = new int[ bytesLeft ];
-		readBytes( is, data, 0, bytesLeft );
-
-		for ( int offset = 0, j = 0; j < 3; j++ ) {
-			offset = loadZ80_page( data, offset, cpu );
-		}
-	}
-
-	private int loadZ80_page( int data[], int i, CPU cpu ) throws Exception {
-		int blocklen;
-		int page;
-
-		blocklen  = data[i++];
-		blocklen |= (data[i++]) << 8;
-		page = data[i++];
-
-		int addr;
-		switch(page) {
-		case 4:
-			addr = 32768;
-			break;
-		case 5:
-			addr = 49152;
-			break;
-		case 8:
-			addr = 16384;
-			break;
-		default:
-			throw new Exception( "Z80 (page): out of range " + page );
-		}
-
-		int        k = 0;
-		while (k < blocklen) {
-			int        tbyte = data[i++]; k++;
-			if ( tbyte != 0xed ) {
-				cpu.pokeb(addr, ~tbyte);
-				cpu.pokeb(addr, tbyte);
-				addr++;
-			}
-			else {
-				tbyte = data[i++]; k++;
-				if ( tbyte != 0xed ) {
-					cpu.pokeb(addr, 0);
-					cpu.pokeb(addr, 0xed);
-					addr++;
-					i--; k--;
-				}
-				else {
-					int        count;
-					count = data[i++]; k++;
-					tbyte = data[i++]; k++;
-					while ( count-- > 0 ) {
-						cpu.pokeb(addr, ~tbyte);
-						cpu.pokeb(addr, tbyte);
-						addr++;
-					}
-				}
-			}
-		}
-
-		if ((addr & 16383) != 0) {
-			throw new Exception( "Z80 (page): overrun" );
-		}
-		
-		return i;
-	}
-
-	
 	
 	@Override
 	public String getFileName() {
@@ -536,5 +308,32 @@ public class FormatZ80 extends FileFormat {
 		return null;
 		
 	}
-
+	
+	private int uncompress_z80(Spectrum48k computer, DataInputStream in, int pos, int count)
+			throws IOException
+		{
+			int end = pos+count;
+			int n = 0;
+			loop: do {
+				int v = get8(in); n++;
+				if(v != 0xED) {
+					computer.mem(pos++, v);
+					continue;
+				}
+				v = get8(in); n++;
+				if(v != 0xED) {
+					computer.mem16(pos, v<<8 | 0xED);
+					pos += 2;
+					continue;
+				}
+				int l = get8(in);
+				v = get8(in); n += 2;
+				while(l>0) {
+					computer.mem(pos++, v);
+					if(pos>=end) break loop;
+					l--;
+				}
+			} while(pos<end);
+			return n;
+		}
 }

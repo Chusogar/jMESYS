@@ -1,6 +1,7 @@
 package jMESYS.gui;
 
 import java.awt.Dimension;
+import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.MediaTracker;
@@ -11,22 +12,26 @@ import java.net.URL;
 
 import javax.swing.ImageIcon;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JWindow;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
-public class jMESYSSplashScreen extends JDialog {
+public class jMESYSSplashScreen extends JWindow {
 	
 	private Image img;
+	private Frame parent;
 	
-	public jMESYSSplashScreen (JFrame parent, String title, boolean modal) {
-		super(parent, title, modal);
-		
-		setUndecorated(true);
+	public jMESYSSplashScreen (Frame parent, String title, boolean modal) {
+		//super(parent, title, modal);
+		super();
+		this.parent=parent;
+		//setUndecorated(true);
         buildImage();
         MediaTracker tracker = new MediaTracker(this);
         tracker.addImage(img, 0);
         setSize(img.getWidth(this), img.getHeight(this));
-        center();
+        //center();
         toFront();
         //setVisible(true);
     }
@@ -37,13 +42,14 @@ public class jMESYSSplashScreen extends JDialog {
     }
 	
 	public void closeSplash() {
-		try {			  
+		/*try {			  
 			Thread.sleep(3000);
 		} catch (Exception e){
 			
-		}
+		}*/
 		
         img.flush();
+        
         dispose();
     }
 	
@@ -52,16 +58,27 @@ public class jMESYSSplashScreen extends JDialog {
      *
      */
     public void display() {
-        Runnable r= new Runnable() {
-            /* (non-Javadoc)
-             * @see java.lang.Runnable#run()
-             */
+        /*Runnable r= new Runnable() {
+            
             public void run() {
                 setVisible(true);
             }
         };
             SwingUtilities.invokeLater(r);
-    
+    */
+    	//JWindow window = new JWindow();
+    	try {
+    	
+    this.getContentPane().add(
+    	    new JLabel("", new ImageIcon(getClass().getResource("/jMESYSResources/images/jMESYS.jpg")), SwingConstants.CENTER));
+    	this.setBounds(500, 150, 300, 200);
+    	this.setVisible(true);
+    	
+    	    //Thread.sleep(2000);
+    	} catch (Exception e) {
+    	    e.printStackTrace();
+    	}
+    	//window.setVisible(false);
                 
     }
     
@@ -86,7 +103,7 @@ public class jMESYSSplashScreen extends JDialog {
     private void center() {
         Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
         Rectangle frame = getBounds();
-        //setLocation((screen.width - frame.width) / 2, (screen.height - frame.height) / 2);
-        setLocation((65), (63 + frame.height));
+        setLocation((parent.getWidth() - frame.width) / 2, (parent.getHeight() - frame.height) / 2);
+        //setLocation((65), (63 + frame.height));
     }
 }

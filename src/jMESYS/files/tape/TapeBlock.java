@@ -61,12 +61,12 @@ public class TapeBlock {
 				//+", Content="
 				//+", Content="+new String(content)
 				;
-		/*if (typeBlock==0){
+		//if (typeBlock==0){
 			int c=content.length;
 			for (int i=0 ; i<c ; i++){
-				str += Byte.toString( content[i] )+" ";
+				str += ( content[i] & 0xFF )+" ";
 			}
-		}*/
+		//}
 		
 		return str;
 	}

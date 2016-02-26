@@ -1,8 +1,9 @@
 package jMESYS.gui;
 
+import java.awt.MenuItem;
+
 import jMESYS.files.FileFormat;
 
-import java.awt.MenuItem;
 
 public class jMESYSMenuItem extends MenuItem {
 	

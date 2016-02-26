@@ -14,6 +14,7 @@ public class jMESYSFileLoader extends JFileChooser {
 	// Supported Formats 
 	private FileFormat[] fileFormats = null;
 	private String cadExtensions = "";
+	private int countFormats = 0;
 	
 	// screen
 	private jMESYSDisplay display;
@@ -28,7 +29,7 @@ public class jMESYSFileLoader extends JFileChooser {
 		// screen
 		display = disp;
 		
-		int countFormats = ff.length;
+		countFormats = ff.length;
 				
 		for (int i=0 ; i<countFormats ; i++){
 			cadExtensions += ff[i].getExtension().toUpperCase();
@@ -48,7 +49,7 @@ public class jMESYSFileLoader extends JFileChooser {
 						
 						
 						for (int i=0 ; i<countFormats ; i++){
-							if (file.getName().toUpperCase().endsWith(ff[i].getExtension().toUpperCase()))
+							if (file.getName().toUpperCase().endsWith(fileFormats[i].getExtension().toUpperCase()))
 								formatFound = true;
 						}
 						

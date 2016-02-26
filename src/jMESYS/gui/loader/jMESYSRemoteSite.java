@@ -30,10 +30,15 @@ public abstract class jMESYSRemoteSite {
 	
 	public abstract String getRemoteAddress();
 	public abstract void setRemoteAddress(String addr);
+	public abstract String getRemoteDownloadAddress();
+	public abstract void setRemoteDownloadAddress(String addr);
 	public abstract String getIniTag();
 	public abstract String getEndTag();
+	public abstract void setIniTag( String tag );
+	public abstract void setEndTag( String tag );
 	
-	public Vector readRemotePage (String address, String initag, String endtag) throws Exception {
+	//public Vector readRemotePage (String address, String initag, String endtag, String[] supportedFormats) throws Exception {
+	public Vector readRemotePage (String address, String addressDownload, String initag, String endtag) throws Exception {
 		/*DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
 		Document document = docBuilder.parse(new URL(address).openStream());
@@ -54,18 +59,24 @@ public abstract class jMESYSRemoteSite {
         {
             URL url = new URL(address);
             br = new BufferedReader(new InputStreamReader(url.openStream()));
+            
             String line = "";
+            
+            //int formats = supportedFormats.length;
+            
             while (line != null)
             {
                 line = br.readLine();
                 //contents.append(line);
-                //System.out.println(line);
                 
                 // buscamos el trozo
                 String strIni = "";
                 if (line != null) {
 	                if (line.indexOf( getIniTag() ) != -1){
-	                	line = line.replace(getIniTag(), "");
+	                	//line = line.replace(getIniTag(), "");
+	                	
+	                	line = line.substring(line.lastIndexOf(initag)+initag.length());
+	                	
 	                	if (line.indexOf(getEndTag()) != -1){
 		                	line = line.substring(0, line.indexOf(getEndTag()));
 		                	
@@ -89,8 +100,11 @@ public abstract class jMESYSRemoteSite {
 		                				//|line.contains(".mgt")
 		                				|line.contains(".tzx") 
 		                				){
+		                		//String line2=line;
 		                		
-		                		System.out.println(address+"/"+line);
+		                		//line = line.substring(line.lastIndexOf(initag)+initag.length());
+		                		
+		                		System.out.println(addressDownload+"/"+line);
 		                		
 		                		RemoteFile currentFile = new RemoteFile();
 		                		currentFile.setName(line);
@@ -151,7 +165,7 @@ public abstract class jMESYSRemoteSite {
 	        byte[] buffer = new byte[2048];
 	        try
 	        {
-	            output = new FileOutputStream("D:/a."+tipo);
+	            output = new FileOutputStream("/a."+tipo);
 	            int len = 0;
 	            while ((len = zis.read(buffer)) > 0)
 	            {
@@ -191,7 +205,7 @@ public abstract class jMESYSRemoteSite {
 	
 	public Vector readRemotePage() {
 		try {
-			return readRemotePage(getRemoteAddress(), getIniTag(), getEndTag());
+			return readRemotePage(getRemoteAddress(), getRemoteDownloadAddress(), getIniTag(), getEndTag());
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
 		}
