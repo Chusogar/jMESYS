@@ -160,7 +160,7 @@ public class FormatTAP extends FileFormat {
 		int size = tapeBuffer.length;
 		int blockNum = 1;
 		
-		while (idx < size) {
+		while ((idx < size) && (!painted)) {
 			idx = getIndividualScreenBlock(blockNum, idx, tapeBuffer, disp, tape, g);
 			blockNum++;
 		}
@@ -196,9 +196,9 @@ private int getIndividualScreenBlock(int blockNum, int idx, byte[] tapeBuffer, j
 		tb.setTypeBlock(iType);
 		
 		tape.addBlock(tb);
-		System.out.println("--------------------");
+		/*System.out.println("--------------------");
 		System.out.println(tb.toString());
-		System.out.println("--------------------");
+		System.out.println("--------------------");*/
 		
 		if ((bytesCabecera >= 6914)&&(bytesCabecera<7000)){
 			byte[] arrScr = new byte[32*192];
