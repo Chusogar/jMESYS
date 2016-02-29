@@ -12,17 +12,20 @@ import java.awt.image.ImageProducer;
 import java.awt.image.ImageConsumer;
 import java.awt.image.ColorModel;
 import java.awt.image.IndexColorModel;
+import java.awt.Frame;
 import java.awt.event.KeyEvent;
 import java.util.Vector;
 
 import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.z80.Z80;
+import jMESYS.core.printer.jMESYSPrinterFrame;
 import jMESYS.core.sound.Audio;
 import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTAP;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTZX;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatZ80;
+import jMESYS.drivers.Sinclair.Spectrum.printers.ZXPrinter;
 import jMESYS.files.FileFormat;
 import jMESYS.gui.jMESYSDisplay;
 
@@ -57,6 +60,13 @@ public class Spectrum48k extends Thread implements CPU
 
 	public final Audio audio;
 	public boolean soundON = true;
+	
+	// ZX printer
+	/*private int printerByte = 0;
+	private boolean isPrinting = false;
+	private boolean checkPrinting = false;
+	private int ivX=0;*/
+	ZXPrinter zxPrinter = null;
 	
 	// file formats supported
 	private FileFormat[] supportedFormats = null;
@@ -382,6 +392,10 @@ public class Spectrum48k extends Thread implements CPU
 	{
 		//System.out.println("OUT port="+port+" value="+v);
 		cont_port(port);
+		
+		if ((port&0xFB)==0xFB) { // ZX Printer
+			zxPrinter.out(port, v);
+		}
 
 		if((port&0x0001)==0) {
 			ula28 = (byte)v;
@@ -404,16 +418,26 @@ public class Spectrum48k extends Thread implements CPU
 				ay_write(ay_idx, v);
 			}
 		}
-                /* 128k port */
-                if (port == 0x7ffd) {
-                  out7ffd(v);
-                }
+		
+		/* 128k port */
+        if (port == 0x7ffd) {
+          out7ffd(v);
+        } 
 	}
 
 	public int in(int port)
 	{
+		//System.out.println("IN port="+port +" "+((port&0xFB)==0xFB));
 		cont_port(port);
-                /* kempston */
+		int v = 0xFF;
+		
+		// ZX Printer
+		if ( ((port&0xFB)==0xFB) ) {
+			
+			return zxPrinter.in(port);
+		}
+        
+		/* kempston */
 		if((port&0x00E0)==0)
 			return kempston;
                 /* AY */
@@ -423,12 +447,13 @@ public class Spectrum48k extends Thread implements CPU
 			return ay_reg[ay_idx];
 		}
                 /* keyboard port FE */
-		int v = 0xFF;
+		
 		if((port&0x0001)==0) {
 			for(int i=0; i<8; i++)
 				if((port&0x100<<i) == 0)
 					v &= keyboard[i];
 			v &= ula28<<2 | 0xBF;
+			return v;
 		} else if(cpu.time>=0) {
 			int t = cpu.time;
 			int y = t/224;
@@ -440,8 +465,12 @@ public class Spectrum48k extends Thread implements CPU
 				else
 					x += 6144 | y<<2 & 0x3E0;
 				v = read_ram(x);
+				return v;
 			}
 		}
+		
+		
+		
 		return v;
 	}
 
@@ -1061,8 +1090,15 @@ loop:
 	{
 		System.out.println("check_load/tape_blk="+tape_blk+" length="+tape.length);
 		int pc = cpu.pc();
-		if(cpu.ei() || pc<0x56B || pc>0x604)
+		if(cpu.ei() || pc<0x56B || pc>0x604){
+		//if(cpu.ei() || pc<0x56B ){
+			System.out.println("Ret 1 "+pc);
+			System.out.println("cpu.ei() "+cpu.ei());
+			System.out.println("pc menor 0x56B "+(pc<0x56B));
+			System.out.println("pc mayor 0x604 "+(pc>0x604));
 			return false;
+		}
+			
 		int sp = cpu.sp();
 		if(pc>=0x5E3) {
 			pc = mem16(sp); sp=(char)(sp+2);
@@ -1070,8 +1106,12 @@ loop:
 				pc = mem16(sp); sp=(char)(sp+2);
 			}
 		}
-		if(pc<0x56B || pc>0x58E)
+		if(pc<0x56B || pc>0x58E){
+		//if(pc<0x56B){
+			System.out.println("Ret 2; PC="+pc);
 			return false;
+		}
+			
 		cpu.sp(sp);
 		cpu.ex_af();
 
@@ -1269,5 +1309,13 @@ loop:
 		}
 		
 		return supportedFormats;
+	}
+
+	public jMESYSPrinterFrame getPrinter(Frame frame) {
+		if (zxPrinter == null) {
+			zxPrinter = new ZXPrinter(frame);
+		}
+		
+		return zxPrinter;
 	}
 }

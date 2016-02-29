@@ -25,6 +25,7 @@ import javax.swing.JFrame;
 import javax.swing.tree.DefaultMutableTreeNode;
 
 import jMESYS.core.cpu.z80.Z80;
+import jMESYS.core.printer.jMESYSPrinterFrame;
 import jMESYS.drivers.jMESYSDriver;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
@@ -121,7 +122,7 @@ public class jMESYS extends Applet
                 String smode = param("mode");
                 int mode = smode != null ? (smode.equals("48") ? Spectrum48k.MODE_48K : Spectrum48k.MODE_128K) :
                     ini_mode;
-                mode=Spectrum48k.MODE_128K;
+                mode=Spectrum48k.MODE_48K;
                 System.out.println("MODE: "+mode);
                 spectrum = new Spectrum48k(mode);
                 
@@ -142,7 +143,7 @@ public class jMESYS extends Applet
 		}
                 String rom128 = param("rom128");
                 if (mode != Spectrum48k.MODE_48K && rom128 == null) {
-                        InputStream in = resource("/bios/Sinclair/Spectrum/plus3-0.rom");
+                        InputStream in = resource("/bios/Sinclair/Spectrum/128-0.rom");
                         if(in==null || FileFormat.tomem(spectrum.rom128k, 0, 16384, in) != 0)
                                 showStatus("Can't read /bios/Sinclair/Spectrum/128-0.rom");
                 }
@@ -818,6 +819,12 @@ public class jMESYS extends Applet
 							System.out.print(getComputer().mem(i)+" ");
 						}
 					}
+					
+				} else if (ev.getActionCommand().equals("Show Printer")) {
+					jMESYSPrinterFrame printer = getComputer().getPrinter(frame);
+					
+					//int option = printer.showOpenDialog();
+					//printer.setVisible(true);
 					
 				}  else if (ev.getActionCommand().equals("Size X 3")) {
 					getComputer().scale(3);

@@ -70,7 +70,10 @@ public class jMESYSMenu {
 		    // Menu Extras
 		    MenuItem menuPoke = new MenuItem("Poke");
 		    menuPoke.addActionListener(t);
+		    MenuItem menuPrinter = new MenuItem("Show Printer");
+		    menuPrinter.addActionListener(t);
 		    menuExtra.add(menuPoke);
+		    menuExtra.add(menuPrinter);
 		   
 		    // Menu Settings
 		    Menu mDisplay = new Menu("Display");

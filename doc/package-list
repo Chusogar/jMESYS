@@ -1,11 +1,13 @@
 jMESYS.core.cpu
 jMESYS.core.cpu.MOS6510
 jMESYS.core.cpu.z80
+jMESYS.core.printer
 jMESYS.core.sound
 jMESYS.drivers
 jMESYS.drivers.Sinclair.Spectrum
 jMESYS.drivers.Sinclair.Spectrum.display
 jMESYS.drivers.Sinclair.Spectrum.formats
+jMESYS.drivers.Sinclair.Spectrum.printers
 jMESYS.drivers.Sinclair.Spectrum.sites
 jMESYS.files
 jMESYS.files.tape

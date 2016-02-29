@@ -169,7 +169,9 @@ public class FormatTZX extends FileFormat{
              	System.out.println("Datos con clave");
                //datos.add(new DefaultMutableTreeNode("Longitud bloque: " + Integer.toHexString(lon).toUpperCase() + "H"));
              	System.out.println("Longitud bloque: " + Integer.toHexString(lon).toUpperCase() + "H");
-               entrada.skip(lon - 1);
+               //entrada.skip(lon - 1);
+             	dataTape = buildDataBlock(entrada, lon, j);
+             	v.addElement(dataTape);
              }
              S = "Pausa tras bloque:  " + Integer.toString(pausa) + " ms";
              //datos.add(new DefaultMutableTreeNode(S));
@@ -845,7 +847,9 @@ private String getHeader(int type, int cod1, byte[] block) throws Exception {
                 	System.out.println("Datos con clave");
                   //datos.add(new DefaultMutableTreeNode("Longitud bloque: " + Integer.toHexString(lon).toUpperCase() + "H"));
                 	System.out.println("Longitud bloque: " + Integer.toHexString(lon).toUpperCase() + "H");
-                  entrada.skip(lon - 1);
+                  //entrada.skip(lon - 1);
+                	dataTape = buildDataBlock(entrada, lon, j);
+                 	v.addElement(dataTape);
                 }
                 S = "Pausa tras bloque:  " + Integer.toString(pausa) + " ms";
                 //datos.add(new DefaultMutableTreeNode(S));
