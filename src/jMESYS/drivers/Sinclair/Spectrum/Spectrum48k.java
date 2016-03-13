@@ -12,20 +12,29 @@ import java.awt.image.ImageProducer;
 import java.awt.image.ImageConsumer;
 import java.awt.image.ColorModel;
 import java.awt.image.IndexColorModel;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.event.KeyEvent;
+import java.util.Enumeration;
 import java.util.Vector;
+import java.util.zip.ZipFile;
+
+import com.sun.media.jfxmedia.AudioClip;
 
 import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.z80.Z80;
-import jMESYS.core.printer.jMESYSPrinterFrame;
+import jMESYS.core.devices.printer.jMESYSPrinterFrame;
 import jMESYS.core.sound.Audio;
+import jMESYS.core.sound.cards.AY_3_8912.AY_3_8912;
+//import jMESYS.core.sound.Audio;
+import jMESYS.drivers.Sinclair.Spectrum.devices.printers.ZXPrinter;
 import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTAP;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTZX;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatZ80;
-import jMESYS.drivers.Sinclair.Spectrum.printers.ZXPrinter;
 import jMESYS.files.FileFormat;
 import jMESYS.gui.jMESYSDisplay;
 
@@ -58,15 +67,563 @@ public class Spectrum48k extends Thread implements CPU
         
 	public int if1rom[];
 
-	public final Audio audio;
+	//public final Audio audio;
+	public AY_3_8912 audioChip;
+	
 	public boolean soundON = true;
 	
 	// ZX printer
-	/*private int printerByte = 0;
-	private boolean isPrinting = false;
-	private boolean checkPrinting = false;
-	private int ivX=0;*/
 	ZXPrinter zxPrinter = null;
+	
+	// tape Bit
+	private static int ear = 0xbf;
+	private boolean tapeValue = false;
+	
+	// tape variables
+	private int lon = 0;
+	private int pas = 0;
+	private int leader = 0;
+	private int pulse_leader = 0;
+	private int pulse_sync_1 = 0;
+	private int pulse_sync_2 = 0;
+	private int pulse_data_0 = 0;
+	private int pulse_data_1 = 0;
+	private int bits_ult = 0;
+	//pause in mSeconds between blocks, default 1 second
+	private int pausa = 1000;
+	// T-states for reading a tape data
+	private int tapein = 0;
+	//Auxiliar integer for reading the tape
+	private int code = 0;
+	//Number & code of the last played block
+	private int block = 0;
+	private int code_block = 0;
+	//for Zipped tapes
+	private int count_ZIP = 0;
+	  
+	// Reads one single byte of the tape
+	public int readTape(InputStream is) throws Exception{
+	    int j = 0;
+	    try{
+	      
+	      byte[] b = new byte[1];
+	      j = is.read(b, 0, 1);
+	      j = ((b[0] + 256) & 0xff);
+	    }catch(Exception e){
+	      e.printStackTrace(System.out);
+	      throw new Exception("Tape Error");
+	    }
+	    return j;
+	  }
+	
+	//Skips n tape bytes
+	public void skip(int n, InputStream is) throws Exception {
+		is.skip(n);	  
+	}
+	
+	public void stopTape(){
+		System.out.println("Stopping the tape");
+	    //playin(false);
+	    tapeValue = false;
+	    try{
+	      //continuar = false;
+	      //contador = 0;
+	      pausa = 1000;
+	      //monitor.aviso();
+	      //play.stop();
+	    }catch(Exception ex){
+	      ex.printStackTrace(System.out);
+	    }
+	  }
+	
+	//Rewind the tape to the first block
+	  public void rewindTape(InputStream is){
+		System.out.println("Rewind Tape");
+	    try{
+	      
+	      is.close();
+	      //is = new FileInputStream(F);
+	      block = 0;
+	      code_block = 0;
+	    }catch(Exception ex){
+	      ex.printStackTrace();
+	    }
+	  }
+	  
+	//how many bytes are available in the tape (to be readed)
+	  public int available(InputStream is){
+	    try{
+	      int aux = is.available();
+	      
+	      return aux;
+	    }catch(Exception ex){
+	      ex.printStackTrace();
+	      return 0;
+	    }
+	  }
+	  
+	//Salta un bloque en una cinta TZX
+	  public void next_block_TZX(InputStream is){
+	    try{
+	      code = readTape(is);
+	      lon = 0;
+	      block++;
+	      code_block = code;
+	      switch (code){
+	        case 0x10:{
+	          skip(2, is);
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          break;
+	        }
+	        case 0x11:{
+	          skip(15, is);
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          lon |= (readTape(is) << 16);
+	          break;
+	        }
+	        case 0x12:
+	        case 0x2A:{
+	          lon = 4;
+	          break;
+	        }
+	        case 0x13:{
+	          lon = readTape(is) * 2;
+	          break;
+	        }
+	        case 0x14:{
+	          skip(7, is);
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          lon |= (readTape(is) << 16);
+	          break;
+	        }
+	        case 0x15:{
+	          skip(5, is);
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          lon |= (readTape(is) << 16);
+	          break;
+	        }
+	        case 0x16:
+	        case 0x17:{
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          lon |= (readTape(is) << 16);
+	          lon |= (readTape(is) << 24);
+	          lon -= 4;
+	          break;
+	        }
+	        case 0x20:
+	        case 0x23:
+	        case 0x24:{
+	          lon = 2;
+	          break;
+	        }
+	        case 0x21:
+	        case 0x30:{
+	          lon = readTape(is);
+	          break;
+	        }
+	        case 0x22:
+	        case 0x25:{
+	          break;
+	        }
+	        case 0x26:{
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          lon = lon * 2;
+	          break;
+	        }
+	        case 0x28:
+	        case 0x32:{
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          break;
+	        }
+	        case 0x31:{
+	          skip(1, is);
+	          lon = readTape(is);
+	          break;
+	        }
+	        case 0x33:{
+	          lon = readTape(is) * 3;
+	          break;
+	        }
+	        case 0x34:{
+	          lon = 8;
+	          break;
+	        }
+	        case 0x35:{
+	          skip(10, is);
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          lon |= (readTape(is) << 16);
+	          lon |= (readTape(is) << 24);
+	          break;
+	        }
+	        case 0x40:{       /*SNAPSHOT*/
+	          skip(1, is);
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          lon |= (readTape(is) << 16);
+	          break;
+	        }
+	        case 0x5A:{
+	          lon = 9;
+	          break;
+	        }
+	        default:{
+	          lon = readTape(is);
+	          lon |= (readTape(is) << 8);
+	          lon |= (readTape(is) << 16);
+	          lon |= (readTape(is) << 24);
+	          break;
+	        }
+	      }
+	      skip(lon, is);
+	    }catch(Exception ex){
+	      ex.printStackTrace();
+	    }
+	  }
+	
+	  public void play_TZX(InputStream is){
+		  
+		    try{
+		    	System.out.println("Play TZX "+is.available());
+		    	
+		      tapein = (pausa * 69888) / 20;
+
+		      if(tapein > 0){
+		        tapeValue = false;
+		        cont(tapein);
+		        pausa = 0;
+		      }
+		      
+		      lon = 0;
+		      pas = 0;
+		      leader = 0;
+		      pulse_leader = 0;
+		      pulse_sync_1 = 0;
+		      pulse_sync_2 = 0;
+		      pulse_data_0 = 0;
+		      pulse_data_1 = 0;
+		      bits_ult = 0;
+
+		      code = readTape(is);
+		      block++;
+		      code_block = code;
+
+		      //System.out.println(code + " FIN PAUSA");
+
+		      switch(code){
+		        case 0x10:{
+		        	System.out.println(code + " 0x10");
+		          pas = readTape(is);
+		          pas = pas | (readTape(is) << 8);
+		          lon = readTape(is);
+		          lon = lon | (readTape(is) << 8);
+		          int aux = readTape(is);
+		          if((lon == 0x13) && (aux == 0)){
+		            leader = 8064;
+		          }else{
+		            leader = 3220;
+		          }
+		          skip(-1, is);
+		          pulse_leader = 2168;
+		          pulse_sync_1 = 667;
+		          pulse_sync_2 = 735;
+		          pulse_data_0 = 855;
+		          pulse_data_1 = 1710;
+		          bits_ult = 8;
+		          break;
+		        }
+		        case 0x11:{
+		        	System.out.println(code + " 0x11");
+		          pulse_leader = readTape(is);
+		          pulse_leader |= (readTape(is) << 8);
+		          pulse_sync_1 = readTape(is);
+		          pulse_sync_1 |= (readTape(is) << 8);
+		          pulse_sync_2 = readTape(is);
+		          pulse_sync_2 |= (readTape(is) << 8);
+		          pulse_data_0 = readTape(is);
+		          pulse_data_0 |= (readTape(is) << 8);
+		          pulse_data_1 = readTape(is);
+		          pulse_data_1 |= (readTape(is) << 8);
+		          leader = readTape(is);
+		          leader |= (readTape(is) << 8);
+		          bits_ult = readTape(is);
+		          pas = readTape(is);
+		          pas |= (readTape(is) << 8);
+		          lon = readTape(is);
+		          lon |= (readTape(is) << 8);
+		          lon |= (readTape(is) << 16);
+		          break;
+		        }
+		        case 0x12:{
+		        	System.out.println(code + " 0x12");
+		          pulse_leader = readTape(is);
+		          pulse_leader |= (readTape(is) << 8);
+		          leader = readTape(is);
+		          leader |= (readTape(is) << 8);
+		          //valor = true;
+		          for(int i = 0; i < leader; i++){
+		            tapeValue = !tapeValue;
+		            cont(pulse_leader);
+		          }
+		          return;
+		        }
+		        case 0x13:{
+		        	System.out.println(code + " 0x13");
+		          leader = readTape(is);
+		          tapeValue = true;
+		          for(int i = 0; i < leader; i++){
+		            pulse_leader = readTape(is);
+		            pulse_leader |= (readTape(is) << 8);
+		            tapeValue = !tapeValue;
+		            cont(pulse_leader);
+		          }
+		          return;
+		        }
+		        case 0x14:{
+		        	System.out.println(code + " 0x14");
+		          pulse_data_0 = readTape(is);
+		          pulse_data_0 |= (readTape(is) << 8);
+		          pulse_data_1 = readTape(is);
+		          pulse_data_1 |= (readTape(is) << 8);
+		          bits_ult = readTape(is);
+		          pas = readTape(is);
+		          pas |= (readTape(is) << 8);
+		          lon = readTape(is);
+		          lon |= (readTape(is) << 8);
+		          lon |= (readTape(is) << 16);
+		          break;
+		        }
+		        case 0x15:{
+		        	System.out.println(code + " 0x15");
+		          skip(5, is);
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          num |= (readTape(is) << 16);
+		          skip(num, is);
+		          return;
+		        }
+		        case 0x16:
+		        	
+		        case 0x17:{
+		        	System.out.println(code + " 0x17");
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          num |= (readTape(is) << 16);
+		          num |= (readTape(is) << 24);
+		          skip(num - 4, is);
+		          return;
+		        }
+		        case 0x20:{
+		        	System.out.println(code + " 0x20");
+		          pas = readTape(is);
+		          pas |= (readTape(is) << 8);
+		          pausa = pas;
+		          if(pas == 0){
+		            stopTape();
+		          }
+		          return;
+		        }
+		        case 0x21:{
+		        	System.out.println(code + " 0x21");
+		          int num = readTape(is);
+		          skip(num, is);
+		          num = readTape(is);
+		          while(num != 0x22){
+		            skip(-1, is);
+		            play_TZX(is);
+		            num = readTape(is);
+		          }
+		          return;
+		        }
+		        case 0x22:{
+		        	System.out.println(code + " 0x22");
+		          return;
+		        }
+		        case 0x23:{       /*SALTAR*/
+		        	System.out.println(code + " 0x23");
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          if(num >= 0){
+		            for(int i = 0; i < num; i++){
+		              next_block_TZX(is);
+		            }
+		          }
+		          return;
+		        }
+		        case 0x24:{
+		        	System.out.println(code + " 0x24");
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          if(num < 1){
+		            return;
+		          }
+		          int marca = available(is);
+		          int aux2 = block;
+			        for(int i = 0; i < num; i++){
+		            rewindTape(is);
+		            block = aux2;
+		            skip(available(is) - marca, is);
+				    int aux = readTape(is);
+		            while(aux != 0x25){
+				          skip(-1, is);
+		              play_TZX(is);
+		              aux = readTape(is);
+		            }
+		          }
+		          return;
+		        }
+		        case 0x25:
+		        case 0x27:{
+		        	System.out.println(code + " 0x27");
+		          return;
+		        }
+		        case 0x26:{
+		        	System.out.println(code + " 0x26");
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          skip(num * 2, is);
+		          return;
+		        }
+		        case 0x28:{
+		        	System.out.println(code + " 0x28");
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          skip(num, is);
+		          return;
+		        }
+		        case 0x2A:{
+		        	System.out.println(code + " 0x2A");
+		          skip(4, is);
+		          stopTape();
+		          return;
+		        }
+		        case 0x30:{
+		        	System.out.println(code + " 0x30");
+		          int num = readTape(is);
+		          skip(num, is);
+		          return;
+		        }
+		        case 0x31:{
+		        	System.out.println(code + " 0x31");
+		          skip(1, is);
+		          int num = readTape(is);
+		          skip(num, is);
+		          return;
+		        }
+		        case 0x32:{
+		        	System.out.println(code + " 0x32");
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          skip(num, is);
+		          return;
+		        }
+		        case 0x33:{
+		        	System.out.println(code + " 0x33");
+		          int num = readTape(is);
+		          skip(num * 3, is);
+		          return;
+		        }
+		        case 0x34:{
+		        	System.out.println(code + " 0x34");
+		          skip(8, is);
+		          return;
+		        }
+		        case 0x35:{
+		        	System.out.println(code + " 0x35");
+		          skip(10, is);
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          num |= (readTape(is) << 16);
+		          num |= (readTape(is) << 24);
+		          skip(num, is);
+		          return;
+		        }
+		        case 0x40:{
+		        	System.out.println(code + " 0x40");
+		          skip(1, is);
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          num |= (readTape(is) << 16);
+		          skip(num, is);
+		          return;
+		        }
+		        case 0x5A:{
+		        	System.out.println(code + " 0x5A "+is.available());
+		          skip(9, is);
+		          System.out.println(code + " 0x5A FIN "+is.available());
+		          return;
+		        }
+		        default:{
+		        	System.out.println(code + " default");
+		          int num = readTape(is);
+		          num |= (readTape(is) << 8);
+		          num |= (readTape(is) << 16);
+		          num |= (readTape(is) << 24);
+		          skip(num, is);
+		          stopTape();
+		          return;
+		        }
+		      }
+		      System.out.println("Paso1");
+		      if(leader != 0){
+		        tapeValue = true;
+		        for(int i = 0; i < leader; i++){
+		          tapeValue = !tapeValue;
+		          cont(pulse_leader);
+		        }
+		        if(tapeValue == false){
+		          tapeValue = true;
+		          cont(pulse_leader);
+		        }
+		      }
+		      System.out.println("Paso2");
+		      if(pulse_sync_1 != 0){
+		        tapeValue = false;
+		        cont(pulse_sync_1);
+		        tapeValue = true;
+		        cont(pulse_sync_2);
+		      }
+		      System.out.println("Paso3");
+		      int aux = 0;
+		      int temp = 0;
+		      for(int i = 0; i < (lon - 1); i++){
+		    	  System.out.println("Paso4");
+		        aux = readTape(is);
+		        for(int j = 0; j < 8; j++){
+		        	System.out.println("Paso5");
+		          temp = (((aux & 0x80) != 0) ? pulse_data_1 : pulse_data_0);
+		          tapeValue = false;
+		          cont(temp);
+		          tapeValue = true;
+		          cont(temp);
+		          aux <<= 1;
+		        }
+		      }
+		      System.out.println("Paso6");
+		      aux = readTape(is);
+		      for(int j = 0; j < bits_ult; j++){
+		        temp = (((aux & 0x80) != 0) ? pulse_data_1 : pulse_data_0);
+		        tapeValue = false;
+		        cont(temp);
+		        tapeValue = true;
+		        cont(temp);
+		        aux <<= 1;
+		      }
+		      pausa = pas;
+		      System.out.println("Paso7");
+		    }catch(Exception ex){
+		      ex.printStackTrace(System.out);
+		    }
+		  }
+
+
 	
 	// file formats supported
 	private FileFormat[] supportedFormats = null;
@@ -120,21 +677,37 @@ public class Spectrum48k extends Thread implements CPU
                 display=new SpectrumDisplay();
 		for(int i=6144;i<6912;i++) write_ram(i, 070); // white
 
-		audio = Audio.getAudio();
-		audio.open(3500000);
+		try {
+			//audio = Audio.getAudio();
+			audioChip = new AY_3_8912(3500000);
+			//audio.open(3500000);
+			audioChip.open();
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
 	}
 
 	public void run()
 	{
 		try {
 			frames();
-		} catch(InterruptedException e) {}
-		audio.close();
+			audioChip.close();
+		} catch(Exception e) {
+			e.printStackTrace(System.out);
+		}		
 	}
 
 	private void end_frame() {
-		au_update();
-		au_time -= 69888;
+		
+		try {
+			//au_update();
+			audioChip.updateSoundCard(cpu.time);
+			audioChip.au_time -= 69888;
+			//audioChip.setAudioTime( audioChip.getAudioTime() - 69888);
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
+		
 		refresh_screen();
 		if(display.border != display.border_solid) {
 			int t = refrb_t;
@@ -150,7 +723,8 @@ public class Spectrum48k extends Thread implements CPU
 			flash ^= 0xFF;
 			flash_count = 16;
 		}
-		audio.level -= audio.level>>8;
+		//audio.level -= audio.level>>8;
+		audioChip.setLevel( audioChip.getLevel() - (audioChip.getLevel() >> 8) );
 	}
 
 	private long time;
@@ -161,14 +735,28 @@ public class Spectrum48k extends Thread implements CPU
 		time = System.currentTimeMillis();
 		cpu.time = -14335;
 		cpu.time_limit = 55553;
-		au_time = cpu.time;
+		//au_time = cpu.time;
+		audioChip.setAudioTime(cpu.time);
+		
+		tapeValue = false;
+		
 		for(;;) {
 			byte[] tap = null;
 			boolean tend = false;
 			synchronized(this) {
 				if(display.want_scale != display.scale) {
 					display.scale = display.want_scale;
-					display.width=display.scale*display.W; display.height=display.scale*display.H;
+					if (display.scale == 3) { // Full Screen
+						Dimension d = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+						
+						display.width=d.width; 
+						display.height=d.height;
+					
+					} else { // scale 1 or 2
+						display.width=display.scale*display.W; 
+						display.height=display.scale*display.H;
+					}
+					
 					notifyAll();
 					display.abort_consumers();
 				}
@@ -184,8 +772,10 @@ public class Spectrum48k extends Thread implements CPU
 				if(!paused) {
 					tap = tape;
 					tend = tape_ready;
-					if(!loading && tap!=null)
-						loading = check_load();
+					if(!loading && tap!=null){
+						loading = check_load();						
+					}
+						
 				}
 			}
 
@@ -238,10 +828,16 @@ public class Spectrum48k extends Thread implements CPU
 	{
 		stop_loading();
 		cpu.reset();
-		au_reset();
-                rom = mode == MODE_48K ? rom48k : rom128k;
-                lock48k = false;
-                vram = whole_ram[5];
+		//au_reset();
+		try {
+			audioChip.reset();
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
+        
+		rom = mode == MODE_48K ? rom48k : rom128k;
+        lock48k = false;
+        vram = whole_ram[5];
 	}
 
 	/* Z80.Env */
@@ -351,7 +947,6 @@ public class Spectrum48k extends Thread implements CPU
 		cpu.time -= 3;
 	}
 
-	public byte ay_idx;
 	private byte ula28;
 
         /**
@@ -404,19 +999,15 @@ public class Spectrum48k extends Thread implements CPU
 				refresh_border();
 				display.border = (byte)n;
 			}
-			n = sp_volt[v>>3 & 3];
-			if(n != speaker) {
-				au_update();
-				speaker = n;
-			}
+			
+			audioChip.out(port, v, cpu.time);
+			
+			ear = ((v & 0x10) != 0 ? 0xFF : 0xBF);
 		}
-		if((port&0x8002)==0x8000 && ay_enabled) {
-			if((port&0x4000)!=0)
-				ay_idx = (byte)(v&15);
-			else {
-				au_update();
-				ay_write(ay_idx, v);
-			}
+		//if((port&0x8002)==0x8000 && ay_enabled) {
+		if((port&0x8002)==0x8000 && audioChip.isEnabled()) {
+			
+			audioChip.out(port, v, cpu.time);
 		}
 		
 		/* 128k port */
@@ -431,29 +1022,30 @@ public class Spectrum48k extends Thread implements CPU
 		cont_port(port);
 		int v = 0xFF;
 		
-		// ZX Printer
-		if ( ((port&0xFB)==0xFB) ) {
-			
-			return zxPrinter.in(port);
-		}
-        
 		/* kempston */
 		if((port&0x00E0)==0)
 			return kempston;
-                /* AY */
-		if((port&0xC002)==0xC000 && ay_enabled) {
-			if(ay_idx>=14 && (ay_reg[7]>>ay_idx-8 & 1) == 0)
+        
+		/* AY */
+		if((port&0xC002)==0xC000 && audioChip.isEnabled()) {
+			/*if(audioChip.ay_idx>=14 && (audioChip.ay_reg[7]>>audioChip.ay_idx-8 & 1) == 0)
 				return 0xFF;
-			return ay_reg[ay_idx];
+			return audioChip.ay_reg[audioChip.ay_idx];*/
+			return audioChip.in(port);
 		}
-                /* keyboard port FE */
 		
+		/* keyboard port FE */
 		if((port&0x0001)==0) {
 			for(int i=0; i<8; i++)
 				if((port&0x100<<i) == 0)
 					v &= keyboard[i];
 			v &= ula28<<2 | 0xBF;
-			return v;
+			
+			// tape
+			ear = (tapeValue ? 0xFF : 0xBF);
+
+		    return (v | (ear & 0x40));
+			//return v;
 		} else if(cpu.time>=0) {
 			int t = cpu.time;
 			int y = t/224;
@@ -469,7 +1061,12 @@ public class Spectrum48k extends Thread implements CPU
 			}
 		}
 		
-		
+		// ZX Printer
+		if ( ((port&0xFB)==0xFB) ) {	
+			if (zxPrinter != null){
+				return zxPrinter.in(port);
+			}
+		}
 		
 		return v;
 	}
@@ -537,6 +1134,7 @@ public class Spectrum48k extends Thread implements CPU
 	{
 		display.want_scale = m;
 		display.scale=m;
+		System.out.println("SCALE="+display.scale);
 		try {
 			while(display.scale != m) wait();
 		} catch(InterruptedException e) {
@@ -754,230 +1352,212 @@ loop:
 	static final int CHANNEL_VOLUME = 26000;
 	static final int SPEAKER_VOLUME = 50000;
 
-	public boolean ay_enabled;
+	//public boolean ay_enabled;
+	//public byte ay_idx;
 
-	public void ay(boolean y) // enable
+	/*public void ay(boolean y) // enable
 	{
 		if(!y) ay_mix = 0;
 		ay_enabled = y;
-	}
+	}*/
 
-	private int speaker;
-	private static final int sp_volt[];
+	//private int speaker;
+	//private static final int sp_volt[];
 
-	private final byte ay_reg[] = new byte[16];
+	//private final byte ay_reg[] = new byte[16];
 
-	private int ay_aper, ay_bper, ay_cper, ay_nper, ay_eper;
+	/*private int ay_aper, ay_bper, ay_cper, ay_nper, ay_eper;
 	private int ay_acnt, ay_bcnt, ay_ccnt, ay_ncnt, ay_ecnt;
-	private int ay_gen, ay_mix, ay_ech, ay_dis;
+	private int ay_gen, ay_ech, ay_dis;
 	private int ay_avol, ay_bvol, ay_cvol;
 	private int ay_noise = 1;
 	private int ay_ekeep; // >=0:hold, ==0:stop
 	private boolean ay_div16;
-	private int ay_eattack, ay_ealt, ay_estep;
+	private int ay_eattack, ay_ealt, ay_estep;*/
 
-	private static final int ay_volt[];
+	//private static final int ay_volt[];
 
 	public void ay_write(int n, int v) {
 		switch(n) {
-		case  0: ay_aper = ay_aper&0xF00 | v; break;
-		case  1: ay_aper = ay_aper&0x0FF | (v&=15)<<8; break;
-		case  2: ay_bper = ay_bper&0xF00 | v; break;
-		case  3: ay_bper = ay_bper&0x0FF | (v&=15)<<8; break;
-		case  4: ay_cper = ay_cper&0xF00 | v; break;
-		case  5: ay_cper = ay_cper&0x0FF | (v&=15)<<8; break;
-		case  6: ay_nper = v&=31; break;
-		case  7: ay_mix = ~(v|ay_dis); break;
+		case  0: audioChip.ay_aper = audioChip.ay_aper&0xF00 | v; break;
+		case  1: audioChip.ay_aper = audioChip.ay_aper&0x0FF | (v&=15)<<8; break;
+		case  2: audioChip.ay_bper = audioChip.ay_bper&0xF00 | v; break;
+		case  3: audioChip.ay_bper = audioChip.ay_bper&0x0FF | (v&=15)<<8; break;
+		case  4: audioChip.ay_cper = audioChip.ay_cper&0xF00 | v; break;
+		case  5: audioChip.ay_cper = audioChip.ay_cper&0x0FF | (v&=15)<<8; break;
+		case  6: audioChip.ay_nper = v&=31; break;
+		case  7: audioChip.ay_mix = ~(v|audioChip.ay_dis); break;
 		case  8:
 		case  9:
 		case 10:
 			int a=v&=31, x=011<<(n-8);
 			if(v==0) {
-				ay_dis |= x;
-				ay_ech &= ~x;
+				audioChip.ay_dis |= x;
+				audioChip.ay_ech &= ~x;
 			} else if(v<16) {
-				ay_dis &= (x = ~x);
-				ay_ech &= x;
+				audioChip.ay_dis &= (x = ~x);
+				audioChip.ay_ech &= x;
 			} else {
-				ay_dis &= ~x;
-				ay_ech |= x;
-				a = ay_estep^ay_eattack;
+				audioChip.ay_dis &= ~x;
+				audioChip.ay_ech |= x;
+				a = audioChip.ay_estep^audioChip.ay_eattack;
 			}
-			ay_mix = ~(ay_reg[7]|ay_dis);
-			a = ay_volt[a];
+			audioChip.ay_mix = ~(audioChip.ay_reg[7]|audioChip.ay_dis);
+			a = AY_3_8912.ay_volt[a];
 			switch(n) {
-			case 8: ay_avol = a; break;
-			case 9: ay_bvol = a; break;
-			case 10: ay_cvol = a; break;
+			case 8: audioChip.ay_avol = a; break;
+			case 9: audioChip.ay_bvol = a; break;
+			case 10: audioChip.ay_cvol = a; break;
 			}
 			break;
-		case 11: ay_eper = ay_eper&0xFF00 | v; break;
-		case 12: ay_eper = ay_eper&0xFF | v<<8; break;
-		case 13: ay_eshape(v&=15); break;
+		case 11: audioChip.ay_eper = audioChip.ay_eper&0xFF00 | v; break;
+		case 12: audioChip.ay_eper = audioChip.ay_eper&0xFF | v<<8; break;
+		case 13: try {
+				audioChip.shapeSoundCard(v&=15);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} break;
 		}
-		ay_reg[n] = (byte)v;
+		audioChip.ay_reg[n] = (byte)v;
 	}
 
-	private void ay_eshape(int v) {
+	/*private void ay_eshape(int v) {
 		if(v<8)
 			v = v<4 ? 1 : 7;
 
-		ay_ekeep = (v&1)!=0 ? 1 : -1;
-		ay_ealt = (v+1&2)!=0 ? 15 : 0;
-		ay_eattack = (v&4)!=0 ? 15 : 0;
-		ay_estep = 15;
+		audioChip.ay_ekeep = (v&1)!=0 ? 1 : -1;
+		audioChip.ay_ealt = (v+1&2)!=0 ? 15 : 0;
+		audioChip.ay_eattack = (v&4)!=0 ? 15 : 0;
+		audioChip.ay_estep = 15;
 
-		ay_ecnt = -1; // ?
-		ay_echanged();
-	}
+		audioChip.ay_ecnt = -1; // ?
+		try{
+		audioChip.changedSoundCard();
+		}catch (Exception e){
+			e.printStackTrace(System.out);
+		}
+	}*/
 
-	private void ay_echanged()
+	/*private void ay_echanged()
 	{
-		int v = ay_volt[ay_estep ^ ay_eattack];
-		int x = ay_ech;
-		if((x&1)!=0) ay_avol = v;
-		if((x&2)!=0) ay_bvol = v;
-		if((x&4)!=0) ay_cvol = v;
-	}
+		int v = AY_3_8912.ay_volt[audioChip.ay_estep ^ audioChip.ay_eattack];
+		int x = audioChip.ay_ech;
+		if((x&1)!=0) audioChip.ay_avol = v;
+		if((x&2)!=0) audioChip.ay_bvol = v;
+		if((x&4)!=0) audioChip.ay_cvol = v;
+	}*/
 
-	private int ay_tick()
+	/*private int ay_tick()
 	{
 		int x = 0;
-		if((--ay_acnt & ay_aper)==0) {
-			ay_acnt = -1;
+		if((--audioChip.ay_acnt & audioChip.ay_aper)==0) {
+			audioChip.ay_acnt = -1;
 			x ^= 1;
 		}
-		if((--ay_bcnt & ay_bper)==0) {
-			ay_bcnt = -1;
+		if((--audioChip.ay_bcnt & audioChip.ay_bper)==0) {
+			audioChip.ay_bcnt = -1;
 			x ^= 2;
 		}
-		if((--ay_ccnt & ay_cper)==0) {
-			ay_ccnt = -1;
+		if((--audioChip.ay_ccnt & audioChip.ay_cper)==0) {
+			audioChip.ay_ccnt = -1;
 			x ^= 4;
 		}
 
-		if(ay_div16 ^= true) {
-			ay_gen ^= x;
-			return x & ay_mix;
+		if(audioChip.ay_div16 ^= true) {
+			audioChip.ay_gen ^= x;
+			return x & audioChip.ay_mix;
 		}
 
-		if((--ay_ncnt & ay_nper)==0) {
-			ay_ncnt = -1;
-			if((ay_noise&1)!=0) {
+		if((--audioChip.ay_ncnt & audioChip.ay_nper)==0) {
+			audioChip.ay_ncnt = -1;
+			if((audioChip.ay_noise&1)!=0) {
 				x ^= 070;
-				ay_noise ^= 0x28000;
+				audioChip.ay_noise ^= 0x28000;
 			}
-			ay_noise >>= 1;
+			audioChip.ay_noise >>= 1;
 		}
 
-		if((--ay_ecnt & ay_eper)==0) {
-			ay_ecnt = -1;
-			if(ay_ekeep!=0) {
-				if(ay_estep==0) {
-					ay_eattack ^= ay_ealt;
-					ay_ekeep >>= 1;
-					ay_estep = 16;
+		if((--audioChip.ay_ecnt & audioChip.ay_eper)==0) {
+			audioChip.ay_ecnt = -1;
+			if(audioChip.ay_ekeep!=0) {
+				if(audioChip.ay_estep==0) {
+					audioChip.ay_eattack ^= audioChip.ay_ealt;
+					audioChip.ay_ekeep >>= 1;
+					audioChip.ay_estep = 16;
 				}
-				ay_estep--;
-				if(ay_ech!=0) {
-					ay_echanged();
+				audioChip.ay_estep--;
+				if(audioChip.ay_ech!=0) {
+					try {
+						audioChip.changedSoundCard();
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 					x |= 0x100;
 				}
 			}
 		}
-		ay_gen ^= x;
-		return x & ay_mix;
-	}
+		audioChip.ay_gen ^= x;
+		return x & audioChip.ay_mix;
+	}*/
 
-	private int au_value()
+	/*private int au_value()
 	{
-		int g = ay_mix & ay_gen;
-		int v = speaker;
-		if((g&011)==0) v += ay_avol;
-		if((g&022)==0) v += ay_bvol;
-		if((g&044)==0) v += ay_cvol;
+		int g = audioChip.ay_mix & audioChip.ay_gen;
+		int v = audioChip.speaker;
+		if((g&011)==0) v += audioChip.ay_avol;
+		if((g&022)==0) v += audioChip.ay_bvol;
+		if((g&044)==0) v += audioChip.ay_cvol;
 		return v;
-	}
+	}*/
 
-	private int au_time;
-	private int au_val, au_dt;
+	//private int au_time;
+	//private int au_val, au_dt;
 
-	private void au_update() {
+	/*private void au_update() {
+		try {
 		int t = cpu.time;
-		au_time += (t -= au_time);
+		audioChip.au_time += (t -= audioChip.au_time);
 
-		int dv = au_value() - au_val;
+		int dv = audioChip.getValueSoundCard() - audioChip.au_val;
 		if(dv != 0) {
-			au_val += dv;
-			audio.step(0, dv);
+			audioChip.au_val += dv;
+			audioChip.getAudio().step(0, dv);
 		}
-		int dt = au_dt;
+		int dt = audioChip.au_dt;
 		for(; t>=dt; dt+=16) {
-			if(ay_tick() == 0)
-				continue;
-			dv = au_value() - au_val;
+			try {
+				if(audioChip.tickSoundCard() == 0)
+					continue;
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			dv = audioChip.getValueSoundCard() - audioChip.au_val;
 			if(dv == 0)
 				continue;
-			au_val += dv;
-			audio.step(dt, dv);
+			audioChip.au_val += dv;
+			audioChip.getAudio().step(dt, dv);
 			t -= dt; dt = 0;
 		}
-		au_dt = dt - t;
-		audio.step(t, 0);
-	}
+		audioChip.au_dt = dt - t;
+		audioChip.getAudio().step(t, 0);
+		} catch (Exception e){
+			e.printStackTrace(System.out);
+		}
+	}*/
 
 	void au_reset()
 	{
-		/* XXX */
-		speaker = 0;
-		ay_mix = ay_gen = 0;
-		ay_avol = ay_bvol = ay_cvol = 0;
-		ay_ekeep = 0;
-		ay_dis = 077;
+		audioChip.speaker = 0;
+		audioChip.ay_mix = audioChip.ay_gen = 0;
+		audioChip.ay_avol = audioChip.ay_bvol = audioChip.ay_cvol = 0;
+		audioChip.ay_ekeep = 0;
+		audioChip.ay_dis = 077;
 	}
 
-	public static boolean muted = false;
-	static int volume = 50; // %
-
-	public void mute(boolean v) {
-		muted = v;
-		if (muted){
-			ay_ekeep = 0;
-			ay_mix=0;
-		}
-		setvol();
-	}
-
-	public int volumeChg(int chg) {
-		int v = volume + chg;
-		if(v<0) v=0; else if(v>100) v=100;
-		volume = v;
-		setvol();
-		return v;
-	}
-
-	static {
-		sp_volt = new int[4];
-		ay_volt = new int[16];
-		setvol();
-	}
-
-	static void setvol()
-	{
-		double a = muted ? 0 : volume/100.;
-		a *= a;
-
-		sp_volt[2] = (int)(SPEAKER_VOLUME*a);
-		sp_volt[3] = (int)(SPEAKER_VOLUME*1.06*a);
-
-		a *= CHANNEL_VOLUME;
-		int n;
-		ay_volt[n=15] = (int)a;
-		do {
-			ay_volt[--n] = (int)(a *= 0.7071);
-		} while(n>1);
-	}
-
+	
 	/* keyboard & joystick */
 
 	public final int keyboard[] = new int[8];
@@ -1085,17 +1665,29 @@ loop:
 	}
 
 	/* tape */
-
+	/*private boolean check_load()
+	{
+		
+	}*/
+	
 	private boolean check_load()
 	{
-		System.out.println("check_load/tape_blk="+tape_blk+" length="+tape.length);
+		//System.out.println("check_load/tape_blk="+tape_blk+" length="+tape.length);
 		int pc = cpu.pc();
+		//System.out.println("check_load/tape_blk="+tape_blk+" length="+tape.length);
+		//System.out.println("A="+cpu.a()+" IX="+cpu.ix()+" DE="+cpu.de()+" PC="+cpu.pc());
+		//if ((cpu.ix() == 16384)&&(cpu.de()==6912)) {
+		//if ((cpu.a() == 95)&&(pc>=65518)) {			
+		/*if ((cpu.ix() == 16384)) {
+			System.out.println("ÑAPAAAAAAA!!!!!");
+			pc=1528;
+		}*/
 		if(cpu.ei() || pc<0x56B || pc>0x604){
 		//if(cpu.ei() || pc<0x56B ){
-			System.out.println("Ret 1 "+pc);
-			System.out.println("cpu.ei() "+cpu.ei());
+			//System.out.println("Ret 1 "+pc+" a="+cpu.a());
+			/*System.out.println("cpu.ei() "+cpu.ei());
 			System.out.println("pc menor 0x56B "+(pc<0x56B));
-			System.out.println("pc mayor 0x604 "+(pc>0x604));
+			System.out.println("pc mayor 0x604 "+(pc>0x604));*/
 			return false;
 		}
 			
@@ -1108,7 +1700,7 @@ loop:
 		}
 		if(pc<0x56B || pc>0x58E){
 		//if(pc<0x56B){
-			System.out.println("Ret 2; PC="+pc);
+			//System.out.println("Ret 2; PC="+pc);
 			return false;
 		}
 			
@@ -1290,7 +1882,13 @@ loop:
                 mem(23611, 0x0C); // FLAGS
 
 		cpu.pc(4788);
-		au_reset();
+		//au_reset();
+		try {
+			audioChip.reset();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace(System.out);
+		}
 	}
 
 	public jMESYSDisplay getDisplay() {

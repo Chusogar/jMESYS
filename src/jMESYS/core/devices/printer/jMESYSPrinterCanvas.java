@@ -1,4 +1,4 @@
-package jMESYS.core.printer;
+package jMESYS.core.devices.printer;
 
 import java.awt.Color;
 import java.awt.Dimension;

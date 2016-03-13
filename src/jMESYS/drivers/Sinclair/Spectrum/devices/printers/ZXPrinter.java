@@ -1,9 +1,10 @@
-package jMESYS.drivers.Sinclair.Spectrum.printers;
+package jMESYS.drivers.Sinclair.Spectrum.devices.printers;
 
 import java.awt.Color;
 import java.awt.Frame;
 
-import jMESYS.core.printer.jMESYSPrinterFrame;
+import jMESYS.core.devices.printer.jMESYSPrinterFrame;
+import jMESYS.drivers.jMESYSComputer;
 
 public class ZXPrinter extends jMESYSPrinterFrame {
 	
@@ -102,6 +103,30 @@ public class ZXPrinter extends jMESYSPrinterFrame {
 
 	public String getPrinterName() {
 		return PRINTER_NAME;
+	}
+
+	@Override
+	public boolean connectDevice(jMESYSComputer computer) throws Exception {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void reset() throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void open() throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void close() throws Exception {
+		// TODO Auto-generated method stub
+		
 	}
 
 		

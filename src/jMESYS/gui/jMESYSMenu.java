@@ -62,8 +62,10 @@ public class jMESYSMenu {
 		    for (int i = 0; i < longo; i++) {
 		    	jMESYSDriver desc = computers[i];
 	          if (desc.shown) {
-	            menuSys.add(new MenuItem(desc.name));
-	           
+	        	  MenuItem mIt = new MenuItem(desc.name);
+	        	  mIt.addActionListener(t);
+	        	  
+	        	  menuSys.add(mIt);	           
 	        }
 		   }
 		    
@@ -110,7 +112,7 @@ public class jMESYSMenu {
 		    mX2.addActionListener(t);
 		    mDisplay.add(mX2);
 		    
-		    MenuItem mX3 = new MenuItem("Size X 3");
+		    MenuItem mX3 = new MenuItem("Full Screen");
 		    mX3.addActionListener(t);
 		    mDisplay.add(mX3);
 		    menuSet.addSeparator();

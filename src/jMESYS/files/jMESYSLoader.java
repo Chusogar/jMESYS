@@ -192,6 +192,7 @@ public class jMESYSLoader extends Thread {
 
 			Thread t =  new Thread(qaop);
 			byte data[] = (byte[])cache.get(url);
+			
 			if(data!=null) try {
 				qaop.do_load(new ByteArrayInputStream(data), kind, gz);
 				t.setPriority(Thread.NORM_PRIORITY-1);

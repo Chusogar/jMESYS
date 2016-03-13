@@ -246,10 +246,14 @@ public class FormatZ80 extends FileFormat {
                           //spectrum.rom = spectrum.if1rom;
                         }
 		}
-		if((get8(in)&4)!=0 && computer.ay_enabled && l>=23) {
-			computer.ay_idx = (byte)(get8(in) & 15);
-			for(int i=0;i<16;i++)
-				computer.ay_write(i, get8(in));
+		//if((get8(in)&4)!=0 && computer.ay_enabled && l>=23) {
+		if((get8(in)&4)!=0 && computer.audioChip.isEnabled() && l>=23) {
+			//computer.ay_idx = (byte)(get8(in) & 15);
+			computer.audioChip.ay_idx = (byte)(get8(in) & 15);
+			for(int i=0;i<16;i++){
+				//computer.ay_write(i, get8(in));
+				computer.audioChip.writeSoundCard(i, get8(in));
+			}
 			l -= 17;
 		}
 		in.skip(l-6);

@@ -1,4 +1,4 @@
-package jMESYS.core.printer;
+package jMESYS.core.devices.printer;
 
 import java.awt.Graphics;
 import java.awt.Color;
@@ -16,27 +16,36 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
+import jMESYS.core.devices.jMESYSDevice;
 
-public abstract class jMESYSPrinterFrame extends JFrame implements ActionListener {
+
+public abstract class jMESYSPrinterFrame extends JFrame implements jMESYSDevice, ActionListener {
 	
 	public abstract int getPaperLength();
 	public abstract int getPaperWidth();
 	
 	public abstract String getPrinterName();
-	public abstract int getPortNumber();
-	
-	public abstract void out(int port, int v);
-	public abstract int in(int port);
 	
 	private int xPos=0;
 	private int yPos=0;
 	
 	private jMESYSPrinterCanvas ivTarget=null;
+	
+	private boolean isConnected = false;
+	private boolean enabled = false;
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		// TODO Auto-generated method stub
 		
+	}
+	
+	public int getDeviceType(){
+		return TYPE_PRINTER;
+	}
+	
+	public String getDeviceName(){
+		return getPrinterName();
 	}
 	
 	public jMESYSPrinterFrame(Frame frame, String printerName) {
@@ -150,5 +159,17 @@ public abstract class jMESYSPrinterFrame extends JFrame implements ActionListene
 	    //g.fillRect(0, 0, 10, 10);
 		//g.drawImage(getPaperImage(), 0, 0, getPaperWidth(), getPaperLength(), null);
 		//refresh();
+	}
+	
+	public boolean isConnected() {
+		return isConnected;
+	}
+	
+	public boolean isEnabled(){
+		return enabled;
+	}
+	
+	public void setEnabled(boolean bEnabled){
+		enabled = bEnabled;
 	}
 }
