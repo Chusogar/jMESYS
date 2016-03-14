@@ -1,6 +1,7 @@
 package jMESYS.gui;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.image.ColorModel;
 import java.awt.image.ImageConsumer;
 import java.awt.image.ImageProducer;
@@ -12,6 +13,8 @@ public abstract class jMESYSDisplay implements ImageProducer {
 	private Vector consumers = new Vector(1);
 	private int width = 0;
 	private int height = 0;
+	
+	public boolean fullScreen = false;
 	
 	public int scale=0;
 	public int want_scale=0;
@@ -59,10 +62,28 @@ public abstract class jMESYSDisplay implements ImageProducer {
 		}
 	}
 	
+	public boolean fullScreen() {
+		return fullScreen;
+	}
+	
+	public void fullScreen(boolean b) {
+		fullScreen = b;
+	}
+	
 	public synchronized void addConsumer(ImageConsumer ic)
 	{
 		try {
-			ic.setDimensions(width*scale, height*scale);
+			//if (!fullScreen) {
+				ic.setDimensions(width*scale, height*scale);
+			//} else {
+				/*Dimension d = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+				ic.setDimensions(d.width, d.height);
+				System.out.println("W="+d.width+" H="+d.height);*/
+				//ic.setDimensions(1350, 710);
+				//width=d.width;
+				//height=d.height;
+			//}
+			
 			consumers.addElement(ic); // XXX it may have been just removed
 			ic.setHints(ic.RANDOMPIXELORDER|ic.SINGLEPASS);
 			if(isConsumer(ic)) ic.setColorModel(cm);

@@ -49,7 +49,7 @@ public class jMESYS extends Applet
 	private Dimension size;
 	private int posx, posy;
 	
-	private boolean fullScreen = false;
+	//private boolean fullScreen = false;
     
 	// menu
 	private jMESYSMenu menubar = null;
@@ -316,6 +316,8 @@ public class jMESYS extends Applet
 			spectrum.scale(s);
 			img = createImage(spectrum.getDisplay());
 		}
+
+
 		//posx = (d.width-spectrum.getDisplay().getWidth())/2;
 		//posy = (d.height-spectrum.getDisplay().getHeight())/2;
 		posx=0;posy=0;
@@ -347,13 +349,14 @@ public class jMESYS extends Applet
 			
 			//img = checkImageFilters(img);
 			
-			if (!fullScreen) {
+			if (!spectrum.getDisplay().fullScreen()) {
 				g.drawImage(checkImageFilters(img), 0, 0, this);
 			} else {
-				//g.drawImage(checkImageFilters(img), 0, 0, 1366, 768, this);
+				Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+				g.drawImage(checkImageFilters(img), 0, 0, d.width, d.height, this);
 				//fullScreen(checkImageFilters(img), g);
-				Image img2 = createResizedCopy((img), 1366, 768, false);
-				g.drawImage(checkImageFilters(img2), 0, 0, 1366, 768, this);
+				//Image img2 = createResizedCopy((img), 1366, 768, false);
+				//g.drawImage(checkImageFilters(img2), 0, 0, 1366, 768, this);
 			}
 			//fullScreen(checkImageFilters(img), g);
 		} catch (Exception e) {
@@ -400,26 +403,7 @@ public class jMESYS extends Applet
 		return imgOut;
 	}
 	
-	private void fullScreen (Image imgin, Graphics g) {
-		Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
-		
-		/*float rateX =  (float)screen.getWidth()/(float)img.getWidth(this);
-		float rateY = (float)screen.getHeight()/(float)img.getHeight(this);
-		if (rateX>rateY){
-		    int W=(int)(img.getWidth(this)*rateY);
-		    int H=(int)(img.getHeight(this)*rateY);
-		    g.drawImage(img, 0, 0,W,H, this);
-		}
-		else{
-		    int W=(int)(img.getWidth(this)*rateX);
-		    int H=(int)(img.getHeight(this)*rateX);
-		    g.drawImage(img, 0, 0,W,H, this);
-		}
-		
-		System.out.println("W="+img.getWidth(this));
-		System.out.println("H="+img.getHeight(this));*/
-		
-	}
+	
 
 	private Image dl_image;
 
@@ -428,6 +412,7 @@ public class jMESYS extends Applet
 		//System.out.println("paint_dl");
 		int x = posx, y = posy;
 		int sw = spectrum.getDisplay().getWidth(), sh = spectrum.getDisplay().getHeight();
+		//System.out.println("sw="+sw+" sh="+sh);
 
 		if(dl_image==null)
 			dl_image = createImage(sw, sh);
@@ -439,13 +424,6 @@ public class jMESYS extends Applet
 		g2.dispose();
 		
 		// filters
-		/*try {
-			img = checkImageFilters(img);
-		} catch (Exception e) {
-			e.printStackTrace(System.out);
-		}*/
-				
-		//g.drawImage(dl_image, x, y, null);
 		try {
 			g.drawImage(checkImageFilters(dl_image), x, y, null);
 		} catch (Exception e) {
@@ -455,6 +433,14 @@ public class jMESYS extends Applet
 
 	public boolean imageUpdate(Image i, int f, int x, int y, int w, int h)
 	{
+		//System.out.println("WW="+w+" HH="+h);
+		if (spectrum.getDisplay().fullScreen()) {
+			Dimension screen = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+			w=screen.width;
+			h=screen.height;
+		}
+		//System.out.println("WW2="+w+" HH2="+h);
+		
 		if((f&FRAMEBITS)!=0) {
 			repaint(posx+x, posy+y, w, h);
 			return true;
@@ -526,7 +512,7 @@ public class jMESYS extends Applet
 	}
 
 	public void focusGained(FocusEvent e) {
-		showStatus(getAppletInfo());
+		//showStatus(getAppletInfo());
 	}
 
 	public void focusLost(FocusEvent e) {
@@ -931,7 +917,8 @@ public class jMESYS extends Applet
 					getComputer().soundON = true;
 				}  else if (ev.getActionCommand().equals("Size X 1")) {
 					//getComputer().getDisplay().scale=1;
-					fullScreen = false;
+					//fullScreen = false;
+					spectrum.getDisplay().fullScreen( false );
 					getComputer().scale(1);
 					posx=0;posy=0;
 					dl_image = null;
@@ -948,7 +935,8 @@ public class jMESYS extends Applet
 					//this.resizeScreen();
 					//this.resize(new Dimension(getComputer().getDisplay().getWidth(), getComputer().getDisplay().getHeight()));
 				}  else if (ev.getActionCommand().equals("Size X 2")) {
-					fullScreen = false;
+					//fullScreen = false;
+					spectrum.getDisplay().fullScreen( false );
 					getComputer().scale(2);
 					posx=0;posy=0;
 					dl_image = null;
@@ -980,8 +968,10 @@ public class jMESYS extends Applet
 					//printer.setVisible(true);
 					
 				}  else if (ev.getActionCommand().equals("Full Screen")) {
-					getComputer().scale(2);
-					fullScreen = true;
+					System.out.println("FULL SCREEN");
+					getComputer().scale(1);
+					//fullScreen = true;
+					spectrum.getDisplay().fullScreen( true );
 					
 					posx=0;posy=0;
 					dl_image = null;

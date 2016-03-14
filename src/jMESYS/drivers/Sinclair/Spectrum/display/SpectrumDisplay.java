@@ -93,6 +93,7 @@ public class SpectrumDisplay extends jMESYSDisplay {
 	
 	public void update_screen(ImageConsumer ic)
 	{
+		//System.out.println("Updating Screen");
 		int m = brdchg_ud; brdchg_ud = 0;
 		int bl = brdchg_l; brdchg_l = 0;
 		int br = brdchg_r; brdchg_r = 0;
