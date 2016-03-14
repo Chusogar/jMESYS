@@ -22,11 +22,11 @@ import jMESYS.gui.jMESYS;
 
 public class jMESYSLoader extends Thread {
 
-		private jMESYS qaop;
+		private jMESYS jmesys;
 
-		public jMESYSLoader(jMESYS qaop, String rom, String if1rom, String rom128) {
+		public jMESYSLoader(jMESYS jmesys, String rom, String if1rom, String rom128) {
 			this.rom = rom; this.if1rom = if1rom;
-			this.qaop = qaop;
+			this.jmesys = jmesys;
 	        this.rom128 = rom128;
 		}
 
@@ -122,34 +122,34 @@ public class jMESYSLoader extends Thread {
 		{
 			try {
 				if(rom != null) {
-					URL url = qaop.url_of_file(rom);
+					URL url = jmesys.url_of_file(rom);
 					download(url, ROM);
 				}
 				if(if1rom != null) {
-					URL url = qaop.url_of_file(if1rom);
+					URL url = jmesys.url_of_file(if1rom);
 					download(url, IF1ROM);
 				}
 	                        if(rom128 != null) {
-	                                URL url = qaop.url_of_file(rom128);
+	                                URL url = jmesys.url_of_file(rom128);
 	                                download(url, ROM128);
 	                        }
 				for(;;) {
 					URL url;
 					synchronized(this) {
-						url = qaop.url_of_file(run);
+						url = jmesys.url_of_file(run);
 						run = null;
 					}
 					if(url != null) {
-						qaop.spectrum.stop_loading();
+						jmesys.spectrum.stop_loading();
 						download(url, 0);
 					}
-					qaop.spectrum.pause(false);
+					jmesys.spectrum.pause(false);
 					synchronized(this) {
-						url = qaop.url_of_file(tape);
+						url = jmesys.url_of_file(tape);
 						tape = null;
 					}
 					if(url != null) {
-						qaop.spectrum.tape(null, false);
+						jmesys.spectrum.tape(null, false);
 						download(url, TAP);
 					}
 
@@ -179,10 +179,10 @@ public class jMESYSLoader extends Thread {
 				else if(f.endsWith(".TZX")) kind = TZX;
 				else if(f.endsWith(".ROM")) kind = CART;
 				else {
-					qaop.showStatus("Unknown format: "+text);
+					jmesys.showStatus("Unknown format: "+text);
 					return;
 				}
-				Spectrum48k s = qaop.spectrum;
+				Spectrum48k s = jmesys.spectrum;
 				s.pause(true);
 				if((kind == TAP) || (kind == TZX)) {
 					s.tape(null, false);
@@ -191,11 +191,11 @@ public class jMESYSLoader extends Thread {
 				} 
 			}	
 
-			Thread t =  new Thread(qaop);
+			Thread t =  new Thread(jmesys);
 			byte data[] = (byte[])cache.get(url);
 			
 			if(data!=null) try {
-				qaop.do_load(new ByteArrayInputStream(data), kind, gz);
+				jmesys.do_load(new ByteArrayInputStream(data), kind, gz);
 				t.setPriority(Thread.NORM_PRIORITY-1);
 				t.start();
 			} catch(Exception e) {
@@ -208,17 +208,17 @@ public class jMESYSLoader extends Thread {
 				flength = 1;
 				PipedOutputStream pipe = new PipedOutputStream();
 				try {
-					qaop.do_load(new PipedInputStream(pipe), kind, gz);
+					jmesys.do_load(new PipedInputStream(pipe), kind, gz);
 					t.start();
 					real_download(url, pipe);
 				} catch(FileNotFoundException e) {
 					String m = "File not found: "+url;
-					qaop.showStatus(m);
+					jmesys.showStatus(m);
 					System.out.println(m);
 				} catch(InterruptedException e) {
 					throw e;
 				} catch(Exception e) {
-					qaop.showStatus(e.toString());
+					jmesys.showStatus(e.toString());
 				} finally {
 					try {pipe.close();} catch(IOException e) {}
 				}
@@ -226,7 +226,7 @@ public class jMESYSLoader extends Thread {
 			t.join();
 			flength = 0;
 			text = null;
-			qaop.repaint();
+			jmesys.repaint();
 			System.gc();
 		}
 
@@ -235,7 +235,7 @@ public class jMESYSLoader extends Thread {
 		{
 			ByteArrayOutputStream d = new ByteArrayOutputStream();
 			InputStream s = null;
-			qaop.repaint(x, y, w, h);
+			jmesys.repaint(x, y, w, h);
 			try {
 				URLConnection con = url.openConnection();
 				int l = con.getContentLength();
@@ -259,7 +259,7 @@ public class jMESYSLoader extends Thread {
 					d.write(buf, 0, n);
 					pipe.write(buf, 0, n);
 					floaded += n;
-					qaop.repaint(x, y, w, h);
+					jmesys.repaint(x, y, w, h);
 				}
 				cache.put(url, d.toByteArray());
 				//System.out.println("CACHE: "+url.getClass().getName());
