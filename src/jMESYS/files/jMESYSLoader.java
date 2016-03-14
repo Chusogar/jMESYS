@@ -169,7 +169,8 @@ public class jMESYSLoader extends Thread {
 			text = f;
 			f = f.toUpperCase();
 			boolean gz = f.endsWith(".GZ") || f.endsWith(".ZIP");
-			if(gz) f = f.substring(0, f.length()-3);
+			if(gz) f = f.substring(0, f.length()-4);
+			System.out.println(f);
 
 			if(kind == 0) {
 				if(f.endsWith(".SNA")) kind = SNA;

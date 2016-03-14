@@ -988,7 +988,7 @@ public class Spectrum48k extends Thread implements CPU
 		//System.out.println("OUT port="+port+" value="+v);
 		cont_port(port);
 		
-		if ((port&0xFB)==0xFB) { // ZX Printer
+		if ((zxPrinter != null)&&((port&0xFB)==0xFB)) { // ZX Printer
 			zxPrinter.out(port, v);
 		}
 

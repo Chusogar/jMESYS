@@ -12,6 +12,10 @@ import java.util.Hashtable;
 import java.util.Properties;
 import java.util.Vector;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
+import java.util.zip.InflaterInputStream;
 
 import javax.swing.JFrame;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -602,9 +606,21 @@ public class jMESYS extends Applet
 
 	public void run() {
 		InputStream in = dl_input;
-		dl_input = null;
+		//dl_input = null;
 		try {
-			if(dl_gz) in = new GZIPInputStream(in);
+			
+			if(dl_gz) {
+				/*ZipInputStream inZip = new ZipInputStream(dl_input);
+				ZipEntry zEntry = inZip.getNextEntry();
+				zEntry.*/
+				System.out.println("ZIP");
+				//in = new InflaterInputStream(dl_input);
+				/*ZipInputStream inZip = new ZipInputStream(dl_input);
+				ZipFile zipi = new ZipFile("a.zip");
+		          in = zipi.getInputStream(inZip.getNextEntry());*/
+				in = jMESYSFileZIP.checkZIP(dl_input); 
+			}
+			
 			switch(dl_kind) {
 				case jMESYSLoader.TZX:
 					System.out.println("Lanzamos Play TZX "+in.available());
