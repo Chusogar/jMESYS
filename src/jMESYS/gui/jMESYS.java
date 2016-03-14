@@ -120,7 +120,7 @@ public class jMESYS extends Applet
                 String smode = param("mode");
                 int mode = smode != null ? (smode.equals("48") ? Spectrum48k.MODE_48K : Spectrum48k.MODE_128K) :
                     ini_mode;
-                //mode=Spectrum48k.MODE_128K;
+                mode=Spectrum48k.MODE_128K;
                 System.out.println("MODE: "+mode);
                 spectrum = new Spectrum48k(mode);
                 
