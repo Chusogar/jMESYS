@@ -1770,7 +1770,7 @@ loop:
                     System.out.println("Can't read /bios/Sinclair/Spectrum/plus3-0.rom");
 		
 		}else if (mode == SpectrumModels.MODE_PENTAGON){
-			System.out.println("PENTAGON");
+			
 			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
 			
 			if(in==null || FileFormat.tomem(rom48k, 0, 16384, in) != 0)
