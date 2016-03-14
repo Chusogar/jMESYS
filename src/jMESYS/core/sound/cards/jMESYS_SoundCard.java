@@ -60,7 +60,7 @@ public abstract class jMESYS_SoundCard implements jMESYSDevice {
 	}
 	
 	public int getVolume() {
-		System.out.println("VOLUME: "+volume);
+		//System.out.println("VOLUME: "+volume);
 		return volume;
 	}
 	
@@ -69,7 +69,7 @@ public abstract class jMESYS_SoundCard implements jMESYSDevice {
 	}
 	
 	public boolean isMuted() {
-		System.out.println("isMuted: "+muted);
+		//System.out.println("isMuted: "+muted);
 		return muted;
 	}
 

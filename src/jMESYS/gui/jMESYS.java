@@ -23,7 +23,9 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import jMESYS.core.cpu.z80.Z80;
 import jMESYS.core.devices.printer.jMESYSPrinterFrame;
 import jMESYS.drivers.jMESYSDriver;
+import jMESYS.drivers.jMESYSFamily;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
+import jMESYS.drivers.Sinclair.Spectrum.SpectrumModels;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTAP;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTXT;
@@ -54,7 +56,7 @@ public class jMESYS extends Applet
 	// menu
 	private jMESYSMenu menubar = null;
 	private static int menuOptions=0;
-	private static jMESYSDriver[] COMPUTERS = null;
+	//private static jMESYSDriver[] COMPUTERS = null;
 	
 	// custom file dialog
 	private Frame    frame;
@@ -107,8 +109,8 @@ public class jMESYS extends Applet
                 
                 /* parse ini */
                 String _ini_mode = (String) prop.get("mode");
-                int ini_mode = (_ini_mode != null && _ini_mode.equals("48")) ? Spectrum48k.MODE_48K :
-                	Spectrum48k.MODE_128K;
+                int ini_mode = (_ini_mode != null && _ini_mode.equals("48")) ? SpectrumModels.MODE_48K :
+                	SpectrumModels.MODE_128K;
                 boolean ini_keymatrix = ini_param( (String) prop.get("keymatrix"), true);
                 String ini_arrows = (String) prop.get("arrows");
                 boolean ini_ay = ini_param( (String) prop.get("ay"), true);
@@ -118,9 +120,9 @@ public class jMESYS extends Applet
 
                 /* Spectrum mode */
                 String smode = param("mode");
-                int mode = smode != null ? (smode.equals("48") ? Spectrum48k.MODE_48K : Spectrum48k.MODE_128K) :
+                int mode = smode != null ? (smode.equals("48") ? SpectrumModels.MODE_48K : SpectrumModels.MODE_128K) :
                     ini_mode;
-                mode=Spectrum48k.MODE_128K;
+                mode=SpectrumModels.MODE_128K;
                 System.out.println("MODE: "+mode);
                 spectrum = new Spectrum48k(mode);
                 
@@ -133,14 +135,15 @@ public class jMESYS extends Applet
 		String rom = param("rom");
 		if(rom == null) {
 			System.out.println("Leo ROM");
+			//InputStream in = resource("/games/Sinclair/Spectrum/ShadowOfTheUnicorn.rom");
 			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
 			System.out.println(in==null);
 			if(in==null || FileFormat.tomem(spectrum.rom48k, 0, 16384, in) != 0)
 				System.out.println("Can't read /rom/spectrum.rom");
 		}
                 String rom128 = param("rom128");
-                if (mode != Spectrum48k.MODE_48K && rom128 == null) {
-                        InputStream in = resource("/bios/Sinclair/Spectrum/zx128_0.rom");
+                if (mode != SpectrumModels.MODE_48K && rom128 == null) {
+                        InputStream in = resource("/bios/Sinclair/Spectrum/Penta_sp.rom");
                         if(in==null || FileFormat.tomem(spectrum.rom128k, 0, 16384, in) != 0)
                                 showStatus("Can't read /rom/128.rom");
                 }
@@ -148,7 +151,7 @@ public class jMESYS extends Applet
                 System.out.println(rom);
                 System.out.println(rom128);
                      
-		loader = new jMESYSLoader(this, rom, param("if1rom"), rom128);
+		loader = new jMESYSLoader(this, rom, "file:///workspace/jMESYSalpha/src/bios/Sinclair/Spectrum/if1.rom", rom128);
 
 		//loader.load("file:///workspace/jMESYSbeta/bin/games/Sinclair/Spectrum/SPACHARR.Z80");
 		//loader.tape(param("tape"));
@@ -225,7 +228,11 @@ public class jMESYS extends Applet
 	
 	private void creaMenu(ActionListener t) {
 		
-		menubar = (new jMESYSMenu(COMPUTERS));
+		jMESYSFamily[] families = new jMESYSFamily[1];
+		families[0] = new SpectrumModels();
+		
+		//menubar = (new jMESYSMenu(COMPUTERS));
+		menubar = (new jMESYSMenu(families));
 		
 	    /*Object f = getParent ();
 	    while (! (f instanceof Frame))
@@ -304,9 +311,9 @@ public class jMESYS extends Applet
 
 	private void resized(Dimension d)
 	{
-		System.out.println("Resized W="+d.getWidth()+" H="+d.getHeight());
+		//System.out.println("Resized W="+d.getWidth()+" H="+d.getHeight());
 		Dimension d2 = this.getSize();
-		System.out.println("Window W="+frame.getWidth()+" H="+frame.getHeight());
+		//System.out.println("Window W="+frame.getWidth()+" H="+frame.getHeight());
 		size = d;
 		int s = d.width>=512 && d.height>=384 ? 2 : 1;
 		
@@ -745,8 +752,9 @@ public class jMESYS extends Applet
 	public void windowDeactivated(WindowEvent e) {}
 	
 	private void createComputerList() {
-	   COMPUTERS = new jMESYSDriver[1];
-	   COMPUTERS[0]=new jMESYSDriver("Spectrum48", "Sinclair ZX Spectrum 48K", "jMESYS.drivers.Spectrum48", true);
+	   //COMPUTERS = new jMESYSDriver[1];
+	   //COMPUTERS[0]=new jMESYSDriver("Spectrum48", "Sinclair ZX Spectrum 48K", "jMESYS.drivers.Spectrum48", true);
+		
 	}
 
 	@Override
@@ -796,29 +804,34 @@ public class jMESYS extends Applet
 					}
 					//getComputer().load();
 					
-				} else if (ev.getActionCommand().equals("Sinclair ZX Spectrum 48K")) {
+				//} else if (ev.getActionCommand().equals("Sinclair ZX Spectrum 48K")) {
+				}else if ( ev.getSource().getClass().toString().endsWith("jMESYS.gui.jMESYSMenuComputerItem") ) {
 					//openLoadDialog();	
 					try {
 						
 						System.out.println("MODE CHANGE");
+						jMESYSMenuComputerItem mItem = (jMESYSMenuComputerItem) ev.getSource();
 						
-						// load and unzipped remote file
-						/*FileFormat[] ff = getComputer().getSupportedFileFormats();
-						WOSsite wos = new WOSsite();
+						int mode=mItem.getModel();
+						int scale=spectrum.scale();
+						boolean fullSC = spectrum.getDisplay().fullScreen();
 						
-						FileFormat xZ80 = ff[2];
-						getComputer().reset();
-						RemoteFile rf = new RemoteFile();
-						rf.setName("SpiritOfNinjaThe.z80.zip");
-						rf.setPath("http://www.worldofspectrum.org/pub/sinclair/games/s");
-						xZ80.loadFormat("/a.z80", wos.getZIPcontents(rf), getComputer());*/
+						spectrum = mItem.getFamily().setModel(mode);
 						
+						img = createImage(spectrum.getDisplay());
 						
-						//getComputer().loadTapeDemo();
-
-						int mode=Spectrum48k.MODE_128K;
+						spectrum.start();
+                        //loader.start();
 						
-						//spectrum.mute(true);
+						spectrum.reset();
+						
+						repaint();
+						spectrum.scale(scale);
+						spectrum.getDisplay().fullScreen(fullSC);
+						spectrum.getDisplay().force_redraw();
+						
+						/*int mode=SpectrumModels.MODE_128K;
+						
 						spectrum.audioChip.muteSoundCard(true);
 						
 						spectrum = new Spectrum48k(mode);
@@ -850,7 +863,7 @@ public class jMESYS extends Applet
 						
 						spectrum.reset();
 						
-						repaint();
+						repaint();*/
 					} catch (Exception e) {
 						e.printStackTrace(System.out);
 					}

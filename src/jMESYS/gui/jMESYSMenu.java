@@ -1,6 +1,8 @@
 package jMESYS.gui;
 
 import jMESYS.drivers.jMESYSDriver;
+import jMESYS.drivers.jMESYSFamily;
+import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.files.FileFormat;
 
 import java.awt.Font;
@@ -11,10 +13,16 @@ import java.awt.MenuItem;
 public class jMESYSMenu {
 
 	private static MenuBar menubar = null;
-	private jMESYSDriver[] computers = null;
+	//private jMESYSDriver[] computers = null;
+	private jMESYSFamily[] computers = null;
 	private Menu mOpen;
 	
-	public jMESYSMenu(jMESYSDriver[] comps) {
+	/*public jMESYSMenu(jMESYSDriver[] comps) {
+		super();
+		computers = comps;
+	}*/
+	
+	public jMESYSMenu(jMESYSFamily[] comps) {
 		super();
 		computers = comps;
 	}
@@ -59,14 +67,38 @@ public class jMESYSMenu {
 		    
 		    // Menu Systems
 		    int longo = computers.length;
-		    for (int i = 0; i < longo; i++) {
+		    /*for (int i = 0; i < longo; i++) {
 		    	jMESYSDriver desc = computers[i];
 	          if (desc.shown) {
 	        	  MenuItem mIt = new MenuItem(desc.name);
 	        	  mIt.addActionListener(t);
 	        	  
 	        	  menuSys.add(mIt);	           
-	        }
+	        }*/
+		    
+		    for (int i = 0; i < longo; i++) {
+		    	jMESYSFamily fam = computers[i];
+		    	Menu mFam = new Menu(fam.getFamilyName());
+		    	menuSys.add(mFam);
+	        	  
+	        	  
+				try {
+					Spectrum48k[] comps;
+					comps = fam.getModels();
+					
+					int numModels = comps.length;
+		        	  
+		        	  for (int iFam=0 ; iFam<numModels ; iFam++){
+		        		  jMESYSMenuComputerItem mComp = new jMESYSMenuComputerItem( fam.getModelDescription(iFam), iFam, fam );
+		        		  mComp.addActionListener(t);
+		        		  mFam.add(mComp);
+		        	  }
+		        	  
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+	        	  
 		   }
 		    
 		    // Menu Extras

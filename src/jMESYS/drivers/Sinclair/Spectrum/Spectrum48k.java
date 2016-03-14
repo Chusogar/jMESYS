@@ -25,8 +25,9 @@ import com.sun.media.jfxmedia.AudioClip;
 
 import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.z80.Z80;
+import jMESYS.core.devices.jMESYSDevice;
 import jMESYS.core.devices.printer.jMESYSPrinterFrame;
-import jMESYS.core.sound.Audio;
+//import jMESYS.core.sound.Audio;
 import jMESYS.core.sound.cards.AY_3_8912.AY_3_8912;
 //import jMESYS.core.sound.Audio;
 import jMESYS.drivers.Sinclair.Spectrum.devices.printers.ZXPrinter;
@@ -43,9 +44,11 @@ public class Spectrum48k extends Thread implements CPU
 
 	public final Z80 cpu = new Z80(this);
 	public SpectrumDisplay display = null;
+	public jMESYSDevice[] devices = null;
+	public Vector vDevices = new Vector();
 	
-	public static final int MODE_48K = 0;
-    public static final int MODE_128K = 1;
+	//public static final int MODE_48K = 0;
+    //public static final int MODE_128K = 1;
 
 	public int rom48k[] = new int[16384];
     public int rom128k[] = new int[16384];
@@ -100,6 +103,28 @@ public class Spectrum48k extends Thread implements CPU
 	private int code_block = 0;
 	//for Zipped tapes
 	private int count_ZIP = 0;
+	
+	private final InputStream resource(String name)
+	{
+		System.out.println(name);
+		return getClass().getResourceAsStream(name);
+	}
+	
+	public void addDevice(jMESYSDevice dev) {
+		vDevices.addElement( dev );
+	}
+	
+	public jMESYSDevice[] getDevices() {
+		
+		int numDevices = vDevices.size();
+		devices = new jMESYSDevice[ numDevices ];
+		
+		for (int i=0 ; i<numDevices ; i++) {
+			devices[i] = (jMESYSDevice) vDevices.elementAt(i);
+		}
+		
+		return devices;
+	}
 	  
 	// Reads one single byte of the tape
 	public int readTape(InputStream is) throws Exception{
@@ -658,7 +683,7 @@ public class Spectrum48k extends Thread implements CPU
 		super("Spectrum");
                 this.mode = mode;
                 keymatrix = true;
-                rom = mode == MODE_48K ? rom48k : rom128k;
+                rom = mode == SpectrumModels.MODE_48K ? rom48k : rom128k;
                 for (int i = 0; i < 8; i++)
                   keyboard[i] = 0xFF;
                 whole_ram[0] = ram0;
@@ -835,7 +860,7 @@ public class Spectrum48k extends Thread implements CPU
 			e.printStackTrace(System.out);
 		}
         
-		rom = mode == MODE_48K ? rom48k : rom128k;
+		rom = mode == SpectrumModels.MODE_48K ? rom48k : rom128k;
         lock48k = false;
         vram = whole_ram[5];
 	}
@@ -954,7 +979,7 @@ public class Spectrum48k extends Thread implements CPU
          * @param v int
          */
         private void out7ffd(int v) {
-          if (mode == MODE_48K || lock48k)
+          if (mode == SpectrumModels.MODE_48K || lock48k)
             return;
           /* D0..D2 ram bank */
           int ram_bank = v & 0x7;
@@ -1698,5 +1723,66 @@ loop:
 		}
 		
 		return zxPrinter;
+	}
+
+	public void loadRoms() {
+		if (mode == SpectrumModels.MODE_48K){
+			
+			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
+			
+			if(in==null || FileFormat.tomem(rom48k, 0, 16384, in) != 0)
+				System.out.println("Can't read /bios/Sinclair/Spectrum/spectrum.rom");
+		
+		} else if (mode == SpectrumModels.MODE_128K){
+			
+			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
+			
+			if(in==null || FileFormat.tomem(rom48k, 0, 16384, in) != 0)
+				System.out.println("Can't read /bios/Sinclair/Spectrum/spectrum.rom");
+		
+            
+			in = resource("/bios/Sinclair/Spectrum/zx128_0.rom");
+            if(in==null || FileFormat.tomem(rom128k, 0, 16384, in) != 0)
+                    System.out.println("Can't read /bios/Sinclair/Spectrum/zx128_0.rom");
+		
+		} else if (mode == SpectrumModels.MODE_PLUS2){
+			
+			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
+			
+			if(in==null || FileFormat.tomem(rom48k, 0, 16384, in) != 0)
+				System.out.println("Can't read /bios/Sinclair/Spectrum/spectrum.rom");
+		
+            
+			in = resource("/bios/Sinclair/Spectrum/plus2-0.rom");
+            if(in==null || FileFormat.tomem(rom128k, 0, 16384, in) != 0)
+                    System.out.println("Can't read /bios/Sinclair/Spectrum/plus2-0.rom");
+		
+		} else if (mode == SpectrumModels.MODE_PLUS3){
+			
+			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
+			
+			if(in==null || FileFormat.tomem(rom48k, 0, 16384, in) != 0)
+				System.out.println("Can't read /bios/Sinclair/Spectrum/spectrum.rom");
+		
+            
+			in = resource("/bios/Sinclair/Spectrum/plus3-0.rom");
+            if(in==null || FileFormat.tomem(rom128k, 0, 16384, in) != 0)
+                    System.out.println("Can't read /bios/Sinclair/Spectrum/plus3-0.rom");
+		
+		}else if (mode == SpectrumModels.MODE_PENTAGON){
+			System.out.println("PENTAGON");
+			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
+			
+			if(in==null || FileFormat.tomem(rom48k, 0, 16384, in) != 0)
+				System.out.println("Can't read /bios/Sinclair/Spectrum/spectrum.rom");
+		
+            
+			in = resource("/bios/Sinclair/Spectrum/Pentagon.rom");
+            if(in==null || FileFormat.tomem(rom128k, 0, 16384, in) != 0)
+                    System.out.println("Can't read /bios/Sinclair/Spectrum/Pentagon.rom");
+		
+		} else {
+			System.out.println("MODE "+mode+" NOT SUPPORTED!!!!");
+		}
 	}
 }

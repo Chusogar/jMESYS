@@ -129,10 +129,10 @@ public class jMESYSLoader extends Thread {
 					URL url = jmesys.url_of_file(if1rom);
 					download(url, IF1ROM);
 				}
-	                        if(rom128 != null) {
-	                                URL url = jmesys.url_of_file(rom128);
-	                                download(url, ROM128);
-	                        }
+                if(rom128 != null) {
+                        URL url = jmesys.url_of_file(rom128);
+                        download(url, ROM128);
+                }
 				for(;;) {
 					URL url;
 					synchronized(this) {

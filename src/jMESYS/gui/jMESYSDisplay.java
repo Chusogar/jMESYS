@@ -36,22 +36,6 @@ public abstract class jMESYSDisplay implements ImageProducer {
 	public abstract void update_screen(ImageConsumer ic);
 	public abstract int[] getDefaultPalette();
 	
-	/* ImageProducer */
-	/*static byte[] palcolor(int m) {
-		System.out.println("Paleta "+m);
-		byte a[] = new byte[16];
-		for(int n=0; n<8; n++) if((n&m)!=0) {
-			a[n] = (byte)0xCD;
-			a[n+8] = (byte)0xFF;
-		}
-		for (int i=0 ; i<16 ; i++){
-			System.out.println(a[i]&0xFF);
-		}
-		return a;
-	}*/
-
-	//public static ColorModel cm = new IndexColorModel(8, 16,
-	//	palcolor(2), palcolor(4), palcolor(1));
 	public static ColorModel cm = null;
 	
 	public void update_screen() {
@@ -73,16 +57,7 @@ public abstract class jMESYSDisplay implements ImageProducer {
 	public synchronized void addConsumer(ImageConsumer ic)
 	{
 		try {
-			//if (!fullScreen) {
-				ic.setDimensions(width*scale, height*scale);
-			//} else {
-				/*Dimension d = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
-				ic.setDimensions(d.width, d.height);
-				System.out.println("W="+d.width+" H="+d.height);*/
-				//ic.setDimensions(1350, 710);
-				//width=d.width;
-				//height=d.height;
-			//}
+			ic.setDimensions(width*scale, height*scale);
 			
 			consumers.addElement(ic); // XXX it may have been just removed
 			ic.setHints(ic.RANDOMPIXELORDER|ic.SINGLEPASS);
