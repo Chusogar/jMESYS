@@ -32,6 +32,7 @@ import jMESYS.core.sound.cards.AY_3_8912.AY_3_8912;
 //import jMESYS.core.sound.Audio;
 import jMESYS.drivers.Sinclair.Spectrum.devices.printers.ZXPrinter;
 import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
+import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSCL;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTAP;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTZX;
@@ -1710,7 +1711,8 @@ loop:
 				new FormatSNA(),
 				new FormatTAP(),
 				new FormatTZX(),
-				new FormatZ80()
+				new FormatZ80(),
+				new FormatSCL()
 			};
 		}
 		
@@ -1769,7 +1771,7 @@ loop:
             if(in==null || FileFormat.tomem(rom128k, 0, 16384, in) != 0)
                     System.out.println("Can't read /bios/Sinclair/Spectrum/plus3-0.rom");
 		
-		}else if (mode == SpectrumModels.MODE_PENTAGON){
+		} else if (mode == SpectrumModels.MODE_PENTAGON){
 			
 			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
 			
@@ -1780,6 +1782,18 @@ loop:
 			in = resource("/bios/Sinclair/Spectrum/Pentagon.rom");
             if(in==null || FileFormat.tomem(rom128k, 0, 16384, in) != 0)
                     System.out.println("Can't read /bios/Sinclair/Spectrum/Pentagon.rom");
+		
+		} else if (mode == SpectrumModels.MODE_PENT_SP){
+			
+			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
+			
+			if(in==null || FileFormat.tomem(rom48k, 0, 16384, in) != 0)
+				System.out.println("Can't read /bios/Sinclair/Spectrum/spectrum.rom");
+		
+            
+			in = resource("/bios/Sinclair/Spectrum/Penta_sp.rom");
+            if(in==null || FileFormat.tomem(rom128k, 0, 16384, in) != 0)
+                    System.out.println("Can't read /bios/Sinclair/Spectrum/Penta_sp.rom");
 		
 		} else {
 			System.out.println("MODE "+mode+" NOT SUPPORTED!!!!");

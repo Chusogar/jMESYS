@@ -13,6 +13,7 @@ public class SpectrumModels extends jMESYSFamily {
     public static final int MODE_PLUS2 		= 2;
     public static final int MODE_PLUS3 		= 3;
     public static final int MODE_PENTAGON 	= 4;
+    public static final int MODE_PENT_SP 	= 5;
     
     private Spectrum48k[] models = null;
     
@@ -40,6 +41,10 @@ public class SpectrumModels extends jMESYSFamily {
     		case MODE_PENTAGON:
     			s = "ZX Spectrum Pentagon 128k";
     		break;
+    		
+    		case MODE_PENT_SP:
+    			s = "ZX Spectrum Pentagon (Spanish) 128k";
+    		break;
     	}
     	
     	return s;
@@ -49,14 +54,14 @@ public class SpectrumModels extends jMESYSFamily {
     	
     	if (models == null) {
     		
-    		models = new Spectrum48k[5];
+    		models = new Spectrum48k[6];
     		
     		models[MODE_48K] 		= new Spectrum48k(MODE_48K);
     		models[MODE_128K] 		= new Spectrum48k(MODE_128K);
     		models[MODE_PLUS2] 		= new Spectrum48k(MODE_128K); 
     		models[MODE_PLUS3] 		= new Spectrum48k(MODE_128K);
     		models[MODE_PENTAGON] 	= new Spectrum48k(MODE_128K);
-    		
+    		models[MODE_PENT_SP] 	= new Spectrum48k(MODE_128K);
     	}
     	
     	return models;
@@ -85,6 +90,10 @@ public class SpectrumModels extends jMESYSFamily {
     			break;
     		case MODE_PENTAGON:
     			myModel = new Spectrum48k(MODE_PENTAGON);
+    			myModel.loadRoms();
+    			break;
+    		case MODE_PENT_SP:
+    			myModel = new Spectrum48k(MODE_PENT_SP);
     			myModel.loadRoms();
     			break;
     	}

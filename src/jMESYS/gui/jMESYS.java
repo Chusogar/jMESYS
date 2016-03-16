@@ -143,7 +143,7 @@ public class jMESYS extends Applet
 		}
                 String rom128 = param("rom128");
                 if (mode != SpectrumModels.MODE_48K && rom128 == null) {
-                        InputStream in = resource("/bios/Sinclair/Spectrum/Penta_sp.rom");
+                        InputStream in = resource("/bios/Sinclair/Spectrum/zx128_0.rom");
                         if(in==null || FileFormat.tomem(spectrum.rom128k, 0, 16384, in) != 0)
                                 showStatus("Can't read /rom/128.rom");
                 }

@@ -42,7 +42,7 @@ public abstract class jMESYS_SoundCard implements jMESYSDevice {
 	}
 	
 	public void open() throws Exception {
-		System.out.println("OPEN AUDIO");
+		//System.out.println("OPEN AUDIO");
 		audio = Audio.getAudio();
 		audio.open(this.Hz);
 	}
