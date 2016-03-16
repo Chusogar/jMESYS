@@ -13,8 +13,8 @@ package jMESYS.gui;
  * Window - Preferences - Java - Code Style - Code Templates
  */
 public class jMESYSVersion {
-	public static final String VERSION="2.0 Beta 11";
-	public static final String RELEASE_DATE = "29-02-2016";
+	public static final String VERSION="3.0 Beta 1";
+	public static final String RELEASE_DATE = "16-03-2016";
 	
 	public jMESYSVersion() {
 		super();
