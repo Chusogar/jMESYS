@@ -2,6 +2,7 @@ package jMESYS.core.sound.cards.AY_3_8912;
 
 import jMESYS.core.sound.cards.jMESYS_SoundCard;
 import jMESYS.drivers.jMESYSComputer;
+import jMESYS.drivers.Sinclair.Spectrum.SpectrumModels;
 
 public class AY_3_8912 extends jMESYS_SoundCard {
 	
@@ -31,6 +32,15 @@ public class AY_3_8912 extends jMESYS_SoundCard {
 	
 	public int au_time;
 	public int au_val, au_dt;
+	
+	public static final int[] compatibleSystems = {
+			SpectrumModels.MODE_48K,
+			SpectrumModels.MODE_128K,
+			SpectrumModels.MODE_PLUS2,
+			SpectrumModels.MODE_PLUS3,
+			SpectrumModels.MODE_PENTAGON,
+			SpectrumModels.MODE_PENT_SP
+	};
 
 	public String getDeviceName() {
 		return devName;
@@ -308,5 +318,21 @@ public class AY_3_8912 extends jMESYS_SoundCard {
 		setVolume(v);
 		setvol();
 		return v;
+	}
+	
+	public int[] getCompatibleSystems() {		
+		return compatibleSystems;
+	}
+
+	public boolean isCompatible(int sysID) {
+		int iNum = compatibleSystems.length;
+		boolean compat = false;
+		
+		for (int i=0 ; i<iNum ; i++){
+			if (sysID == compatibleSystems[i])
+				compat = true;
+		}
+		
+		return compat;
 	}
 }

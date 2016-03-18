@@ -5,11 +5,13 @@ import java.awt.Frame;
 
 import jMESYS.core.devices.printer.jMESYSPrinterFrame;
 import jMESYS.drivers.jMESYSComputer;
+import jMESYS.drivers.Sinclair.Spectrum.SpectrumModels;
 
 public class ZXPrinter extends jMESYSPrinterFrame {
 	
-	private int printerByte=0;
+	//private int printerByte=0;
 	private int ivX = 0;
+	private int cont = 0;
 	
 	private Color colorPaper=Color.WHITE;
 	private Color colorInk=Color.BLACK;
@@ -22,6 +24,15 @@ public class ZXPrinter extends jMESYSPrinterFrame {
 	// paper size (in pixels)
 	public int PAPER_LENGTH = 100;
 	public int PAPER_WIDTH = 256;
+	
+	public static final int[] compatibleSystems = {
+			SpectrumModels.MODE_48K,
+			SpectrumModels.MODE_128K,
+			SpectrumModels.MODE_PLUS2,
+			SpectrumModels.MODE_PLUS3,
+			SpectrumModels.MODE_PENTAGON,
+			SpectrumModels.MODE_PENT_SP
+	};
 	
 	
 	public ZXPrinter(Frame frame) {
@@ -36,20 +47,24 @@ public class ZXPrinter extends jMESYSPrinterFrame {
 	public void out(int port, int v) {
 		//System.out.println("PRINTER OUT "+v);
 		
-		printerByte = v;
+		//printerByte = v;
 		
 		if ((v & 0x04) == 0) {
 			// Motor is on
-			if (ivX < PAPER_WIDTH) {
+			if (ivX < 256) {
+				//System.out.println("CONT="+cont);
 				// Pixelposition within line < 256
 				if ((v & 0x80) != 0) {
-					line[ivX] = colorInk;
-					//System.out.print("1 ");
+					line[cont] = colorInk;
+					//System.out.print(Character.toString ((char) 254));
 				} else {
-					line[ivX] = colorPaper;
-					//System.out.print("0 ");
+					line[cont] = colorPaper;
+					//System.out.print(" ");
 				}
-				
+				cont++;
+				if (cont>=256){
+					cont=0;
+				}
 			}
 		}
 	}
@@ -57,26 +72,38 @@ public class ZXPrinter extends jMESYSPrinterFrame {
 	public int in(int port) {
 		int v=0x3C;
 		
-		if ((port & 0x04) == 0x00) {
+		//if ((port & 0x04) == 0x00) {
 			
 			ivX++;
 			
 			// Check if end of line is reached
 			if (ivX >= 260) {
 				// perform carriage return
+				//System.out.println("X "+ivX);
 				ivX = 0;
-
+				
+				/*int tamLine=line.length;
+				for(int i=0;i<tamLine;i++){
+					if (line[i]==Color.BLACK){
+						System.out.print("X");
+					} else {
+						System.out.print(" ");
+					}
+				}
+				System.out.println();*/
+				cont=0;
 				plotLine(line);
 				carriageReturn();
 				
-				//System.out.println("");
+				
 				
 			}
 
 			// Check if end of printable area is reached
-			if (ivX >= PAPER_WIDTH) {
+			if (ivX >= 256) {
 				// End reached, signal stylus
-				v |= 0x80;					
+				v |= 0x80;
+				
 			} else {
 				// Within printable area, signal sync
 				v |= 0x01;					
@@ -84,9 +111,7 @@ public class ZXPrinter extends jMESYSPrinterFrame {
 			
 			
 			
-		} else {
-			v = printerByte;
-		}
+		//} 
 		
 		//System.out.println("PRINTER IN-->"+v);
 		
@@ -129,5 +154,19 @@ public class ZXPrinter extends jMESYSPrinterFrame {
 		
 	}
 
+	public int[] getCompatibleSystems() {		
+		return compatibleSystems;
+	}
+
+	public boolean isCompatible(int sysID) {
+		int iNum = compatibleSystems.length;
+		boolean compat = false;
 		
+		for (int i=0 ; i<iNum ; i++){
+			if (sysID == compatibleSystems[i])
+				compat = true;
+		}
+		
+		return compat;
+	}	
 }

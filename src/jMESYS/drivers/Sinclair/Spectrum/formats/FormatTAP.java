@@ -166,7 +166,7 @@ public class FormatTAP extends FileFormat {
 		}
 		
 		System.out.println("Finaliza");
-		System.out.println(tape.toString());
+		//System.out.println(tape.toString());
 	}	
 	
 private int getIndividualScreenBlock(int blockNum, int idx, byte[] tapeBuffer, jMESYSDisplay disp, BasicTape tape, Graphics g) throws Exception {
@@ -186,19 +186,14 @@ private int getIndividualScreenBlock(int blockNum, int idx, byte[] tapeBuffer, j
 		idx += bytesCabecera;
 		
 		// creates block object
-		TapeBlock tb = new TapeBlock();
+		/*TapeBlock tb = new TapeBlock();
 		tb.setBlockNumber(blockNum);
 		tb.setContent(header);
-		// (size-2) --> removing param1 and param2 ( 
 		tb.setSize(bytesCabecera - 2);
-		//tb.setToStr(getCleanMsg(2, 10, header));
 		tb.setToStr(getHeader(iType, iCod1, header));
 		tb.setTypeBlock(iType);
 		
-		tape.addBlock(tb);
-		/*System.out.println("--------------------");
-		System.out.println(tb.toString());
-		System.out.println("--------------------");*/
+		tape.addBlock(tb);*/
 		
 		if ((bytesCabecera >= 6914)&&(bytesCabecera<7000)){
 			byte[] arrScr = new byte[32*192];

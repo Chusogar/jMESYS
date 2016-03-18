@@ -1015,7 +1015,8 @@ public class Spectrum48k extends Thread implements CPU
 		cont_port(port);
 		
 		if ((zxPrinter != null)&&((port&0xFB)==0xFB)) { // ZX Printer
-			zxPrinter.out(port, v);
+		//if (((port&0xFB)==0xFB)) { // ZX Printer
+			zxPrinter.out(port, v);			
 		}
 
 		if((port&0x0001)==0) {
@@ -1047,6 +1048,13 @@ public class Spectrum48k extends Thread implements CPU
 		//System.out.println("IN port="+port +" "+((port&0xFB)==0xFB));
 		cont_port(port);
 		int v = 0xFF;
+		
+		// ZX Printer
+		if ( ((port&0xFB)==0xFB) ) {	
+			if (zxPrinter != null){
+				return zxPrinter.in(port);
+			}
+		}
 		
 		/* kempston */
 		if((port&0x00E0)==0)
@@ -1087,12 +1095,7 @@ public class Spectrum48k extends Thread implements CPU
 			}
 		}
 		
-		// ZX Printer
-		if ( ((port&0xFB)==0xFB) ) {	
-			if (zxPrinter != null){
-				return zxPrinter.in(port);
-			}
-		}
+		
 		
 		return v;
 	}

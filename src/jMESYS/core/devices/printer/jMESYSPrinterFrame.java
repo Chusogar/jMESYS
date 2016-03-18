@@ -64,13 +64,7 @@ public abstract class jMESYSPrinterFrame extends JFrame implements jMESYSDevice,
 	    //this.getContentPane().setBackground(Color.BLACK);
 	    //JPanel pan = new JPanel();
 	    //pan.resize(320, 200);
-	    ivTarget = new jMESYSPrinterCanvas(300, 200);
-	    //this.add(new JLabel("HOLA"));
-	    this.add(ivTarget);
-	    //ivTarget.setBackground(Color.RED);
-	    setPreferredSize(new Dimension(300, 200));
-	    setBounds(500, 150, 300, 200);
-	    setVisible(true);
+	    
 	    //ivTargetGraphics=ivTarget.getGraphics();
 	    //System.out.println(ivTarget);
 	    //System.out.println(ivTargetGraphics);
@@ -81,7 +75,18 @@ public abstract class jMESYSPrinterFrame extends JFrame implements jMESYSDevice,
 	    
         //pack();
         //setVisible(true);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        //setDefaultCloseOperation(EXIT_ON_CLOSE);
+	}
+	
+	public void showPrinterFrame() {
+		ivTarget=null;
+		ivTarget = new jMESYSPrinterCanvas(400, 600);
+	    //this.add(new JLabel("HOLA"));
+	    this.add(ivTarget);
+	    //ivTarget.setBackground(Color.RED);
+	    setPreferredSize(new Dimension(400, 600));
+	    setBounds(500, 150, 400, 600);
+	    setVisible(true);
 	}
 	
 	public void carriageReturn() {
@@ -133,8 +138,8 @@ public abstract class jMESYSPrinterFrame extends JFrame implements jMESYSDevice,
 		}*/
 		ivTarget.plotLine(line, yPos);
 		
-		//ivTarget.repaint();
-		//repaint();
+		ivTarget.repaint();
+		repaint();
 	}
 
 	/*private Graphics getPaperGraphics() {

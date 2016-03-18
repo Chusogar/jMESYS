@@ -35,4 +35,7 @@ public interface jMESYSDevice {
 	// connect device to the system
 	public abstract boolean connectDevice(jMESYSComputer computer) throws Exception;
 	
+	// list of compatible systems
+	public abstract int[] getCompatibleSystems();
+	public abstract boolean isCompatible(int sysID);
 }

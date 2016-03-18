@@ -2,10 +2,20 @@ package jMESYS.drivers.Sinclair.Spectrum.devices.interfaces;
 
 import jMESYS.core.devices.jMESYSDevice;
 import jMESYS.drivers.jMESYSComputer;
+import jMESYS.drivers.Sinclair.Spectrum.SpectrumModels;
 
 public class MultifaceI implements jMESYSDevice {
 	
 	private String DEVICE_NAME = "Multiface I";
+	
+	public static final int[] compatibleSystems = {
+			SpectrumModels.MODE_48K,
+			SpectrumModels.MODE_128K,
+			SpectrumModels.MODE_PLUS2,
+			SpectrumModels.MODE_PLUS3,
+			SpectrumModels.MODE_PENTAGON,
+			SpectrumModels.MODE_PENT_SP
+	};
 
 	@Override
 	public void out(int port, int v) {
@@ -77,6 +87,22 @@ public class MultifaceI implements jMESYSDevice {
 	public boolean connectDevice(jMESYSComputer computer) throws Exception {
 		// TODO Auto-generated method stub
 		return false;
+	}
+
+	public int[] getCompatibleSystems() {		
+		return compatibleSystems;
+	}
+
+	public boolean isCompatible(int sysID) {
+		int iNum = compatibleSystems.length;
+		boolean compat = false;
+		
+		for (int i=0 ; i<iNum ; i++){
+			if (sysID == compatibleSystems[i])
+				compat = true;
+		}
+		
+		return compat;
 	}
 
 }

@@ -979,6 +979,7 @@ public class jMESYS extends Applet
 					
 					//int option = printer.showOpenDialog();
 					//printer.setVisible(true);
+					printer.showPrinterFrame();
 					
 				}  else if (ev.getActionCommand().equals("Full Screen")) {
 					System.out.println("FULL SCREEN");

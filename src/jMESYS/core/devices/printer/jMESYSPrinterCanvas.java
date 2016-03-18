@@ -13,22 +13,33 @@ import javax.swing.JComponent;
 public class jMESYSPrinterCanvas extends JComponent {
 	
 	private Image imagePrinter;
-	private int PAPER_WIDTH = 256;
-	private int PAPER_HEIGHT = 512;
+	//private Image imagePaper;
+	private static int PAPER_WIDTH = 256;
+	private static int PAPER_HEIGHT = 1024;
+	private static int PAPER_BORDER = 10;
+	private boolean borderPainted = false;
 	
 	private int yPos=0;
+	private int contBorder=0;
 	//private Color[] lineP = null;
 	
 	public jMESYSPrinterCanvas(int width, int height) {
 		super();
 		
+		System.out.println(width);
+		System.out.println(height);
+		
 		PAPER_WIDTH = width;
 		PAPER_HEIGHT = height;
 		
-		setPreferredSize(new Dimension(PAPER_WIDTH, PAPER_HEIGHT));
+		imagePrinter=null;
+		
+		setPreferredSize(new Dimension(PAPER_BORDER+PAPER_WIDTH+PAPER_BORDER, PAPER_HEIGHT));
 		//icon = createImage(WIDTH, HEIGHT);
-		imagePrinter = createImage(PAPER_WIDTH, PAPER_HEIGHT);
+		imagePrinter = createImage(PAPER_BORDER+260+PAPER_BORDER, PAPER_HEIGHT);
+		//imagePaper = createImage(PAPER_BORDER+260+PAPER_BORDER, PAPER_HEIGHT);
 		//imagePrinter = new BufferedImage(PAPER_WIDTH, PAPER_HEIGHT, BufferedImage.TYPE_INT_RGB);
+		
 	}
 	
 	public Image getImage() {
@@ -45,36 +56,16 @@ public class jMESYSPrinterCanvas extends JComponent {
 			//yPos=y;
 			imagePrinter.getGraphics().setColor(color);
 			imagePrinter.getGraphics().fillRect(x, y, 1, 1);
-		} /*else {
+		} 
+		
+		/*else {
 			imagePrinter = createImage(WIDTH, HEIGHT);
 			System.out.println("Es nulo");
 		}*/
 	}
 	
 	protected void paintComponent(Graphics g) {
-		if (imagePrinter != null){
-			//System.out.println("Pinto Canvas");
-			/*Graphics2D g2d = (Graphics2D) g;
-			Rectangle bounds = new Rectangle(0, 0, WIDTH, HEIGHT);
-			g.setColor(Color.black);
-			g.drawRect(0, 0, WIDTH, HEIGHT);
-			g.setColor(Color.white);
-			g2d.fill(bounds);*/
-			//icon.paintIcon(this, g, 1, 1);
-			
-			
-			
-			g.drawImage(imagePrinter, 0, 0, PAPER_WIDTH, PAPER_HEIGHT, null);
-			/*int numPixels = lineP.length;
-			
-			for (int i=0 ; i<numPixels ; i++){
-				g.setColor(lineP[i]);
-				g.fillRect(i, yPos, 1, 1);
-			}*/
-			
-			/*g.setColor(Color.BLUE);
-			g.fillRect(0, 0, 30, 30);*/
-		}
+		g.drawImage(imagePrinter, 0, 0, null);
 	}
 
 	public void plotLine(Color[] line, int y) {
@@ -87,14 +78,35 @@ public class jMESYSPrinterCanvas extends JComponent {
 		
 		Graphics gr=imagePrinter.getGraphics();
 		
-		int numPixels = line.length;
-		
-		for (int i=0 ; i<numPixels ; i++){
-			gr.setColor(line[i]);
-			gr.fillRect(i, yPos, 1, 1);
+		if (contBorder == 8) {
+			contBorder = 0;
+			int posi = (y-8)/8;
+			
+			// left column circles
+			gr.drawOval(2, 2+(10*posi), 5, 5);
+								
+			// left line
+			gr.drawLine(9, (10*posi), 9, 3+(10*posi));
+			gr.drawLine(9, 5+(10*posi), 9, 8+(10*posi));
+			
+			// right column circles
+			gr.drawOval(PAPER_BORDER+260+10+2, 2+(10*posi), 5, 5);
+								
+			// right line
+			gr.drawLine(PAPER_BORDER+260+10, (10*posi), PAPER_BORDER+260+10, 3+(10*posi));
+			gr.drawLine(PAPER_BORDER+260+10, 5+(10*posi), PAPER_BORDER+260+10, 8+(10*posi));
 		}
 		
-		repaint();
+		int numPixels = line.length;
+				
+		for (int i=0 ; i<numPixels ; i++){
+			gr.setColor(line[i]);
+			gr.fillRect(i+16, yPos, 1, 1);			
+		}
+		
+		contBorder++;
+		//System.out.println();
+		//repaint();
 	}
 
 }
