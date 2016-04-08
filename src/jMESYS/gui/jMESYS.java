@@ -73,7 +73,7 @@ public class jMESYS extends Applet
 		
 		// splash screen
 	    jMESYSSplashScreen splash = new jMESYSSplashScreen(null, "jMESYS", false);
-	    //splash.display();
+	    splash.display();
 			    
 		spectrum=new Spectrum48k(0);
 
@@ -91,19 +91,19 @@ public class jMESYS extends Applet
 		
 		
 		showStatus(getAppletInfo());
-		//splash.closeSplash();
+		splash.closeSplash();
 
 		addKeyListener(this);
 		addFocusListener(this);
 
-                InputStream pin = resource("/qaop128.ini");
+                InputStream pin = resource("/jMESYS.ini");
                 System.out.println(pin==null);
                 Properties prop = new Properties();
                 try {
                   prop.load(pin);
                 }
                 catch (Exception ex) {
-                  System.out.println("Can't read /qaop128.ini");
+                  System.out.println("Can't read /jMESYS.ini");
                 }
                 
                 //splash.closeSplash();
