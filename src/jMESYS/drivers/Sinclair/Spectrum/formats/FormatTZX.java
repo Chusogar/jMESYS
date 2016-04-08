@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.Vector;
 
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
 import jMESYS.files.FileFormat;
@@ -22,12 +23,20 @@ public class FormatTZX extends FileFormat{
 	private static String strExtension = ".TZX";
 	
 	private boolean painted = false;
+	
+	// pulses
+	private int max_pulses = 0;
+	private int[] tape_pulse = new int[0x100];
+	private int tape_err=0;
+	private byte[] tape_image;
+	private int tape_imagesize = 0;
+	
 		
 	public String getExtension() {
 		return strExtension;
 	}
 
-	public void loadFormat(String name, InputStream in, Spectrum48k computer) throws Exception {
+	public void loadFormat(String name, InputStream in, jMESYSComputer computer) throws Exception {
 		System.out.println("LOAD TZX");
 		
 		int pos = 0;
@@ -56,7 +65,7 @@ public class FormatTZX extends FileFormat{
 		}
 		
 		//byte data[] = cinta_TZX( in );
-		cinta_TZX( in,  computer );			
+		cinta_TZX( in,  (Spectrum48k)computer );			
 				
 	}
 
@@ -1464,7 +1473,96 @@ private String getHeader(int type, int cod1, byte[] block) throws Exception {
          return dataTape;
 	}
 	
+	private int FindPulse(int t)
+	{
+		if(max_pulses < 0x100)
+		{
+			for(int i = 0; i < max_pulses; i++)
+				if(tape_pulse[i] == t)
+					return i;
+			tape_pulse[max_pulses] = t;
+			return max_pulses++;
+		}
+		tape_err = 1;
+		int nearest = 0;
+		int delta = 0x7FFFFFFF;
+		for(int i = 0; i < 0x100; i++){
+			
+			if(delta > java.lang.Math.abs((int)t - (int)tape_pulse[i])){
+				nearest = i;
+				delta = java.lang.Math.abs((int)t - (int)tape_pulse[i]);
+			}
+		}
+		
+		return nearest;
+	}
+
+	/*private byte[] MakeBlock(byte[] data, int size, int pilot_t, int s1_t,
+			int s2_t, int zero_t, int one_t, int pilot_len, int pause,
+			byte last)
+	{
+		//Reserve(size * 16 + pilot_len + 3);
+		if(pilot_len != -1)
+		{
+			int t = FindPulse(pilot_t);
+			for(int i = 0; i < pilot_len; i++)
+				tape_image[tape_imagesize++] = (byte) (t & 0xFF);
+			tape_image[tape_imagesize++] = (byte) (FindPulse(s1_t) & 0xFF);
+			tape_image[tape_imagesize++] = (byte) (FindPulse(s2_t) & 0xFF);
+		}
+		int t0 = FindPulse(zero_t), t1 = FindPulse(one_t);
+		//for(; size > 1; size--, data++)
+		for(int i=0; i<size; i++)
+			for(byte j = 0x80; j; j >>= 1)
+				tape_image[tape_imagesize++] = (data[i] & j) ? t1 : t0, tape_image[tape_imagesize++]
+						= (*data & j) ? t1 : t0;
+		for(byte j = 0x80; j != (byte)(0x80 >> last); j >>= 1) // last byte
+			tape_image[tape_imagesize++] = (*data & j) ? t1 : t0, tape_image[tape_imagesize++]
+					= (*data & j) ? t1 : t0;
+		if(pause)
+			tape_image[tape_imagesize++] = FindPulse(pause * 3500);
+	}*/
+	
 	private byte[] buildDataBlockTurbo(InputStream entrada, int lon, int type) throws Exception {
+		int longo=lon-1;
+		//lon+=2;
+		byte[] dataTape = new byte[lon+2];
+		byte[] b = new byte[1];
+		int posiTape=0;
+		int j=0;
+		try{
+    	dataTape[posiTape]=(byte) (lon & 0xFF); posiTape++;
+    	//dataTape[posiTape]=(byte) 0x00; posiTape++;
+    	dataTape[posiTape]=(byte)( (lon & 0xFF00)>>8); posiTape++;
+      //datos.add(new DefaultMutableTreeNode("Datos"));
+    	System.out.println("Datos");
+    	dataTape[posiTape]=(byte) (type); posiTape++;
+    	//dataTape[posiTape]=(byte) (0x03); posiTape++;
+      //datos.add(new DefaultMutableTreeNode("Longitud bloque: " + Integer.toHexString(lon).toUpperCase() + "H"));
+    	System.out.println("Longitud bloque TURBO: " + lon);
+      //entrada.skip(lon - 1);
+    	//FileOutputStream fos = new FileOutputStream(new File("/A.scr"),true);
+    	
+         for (int i=0;i<longo;i++){
+       	  j = entrada.read(b, 0, 1);
+       	  dataTape[posiTape]=(byte) (b[0] & 0xFF); posiTape++;       	  
+         }
+         
+         
+         //fos.close();*/
+         posiTape=0;
+         longo=dataTape.length;
+         System.out.println("CONTENIDO BLOQUE");
+         for (int i=0;i<longo;i++){
+       	  System.out.print((dataTape[i] & 0xFF) +" "); 
+         }
+		} catch (Exception e){
+			e.printStackTrace(System.out);
+		}
+         return dataTape;
+	}
+	
+	private byte[] buildDataBlockTurbo2(InputStream entrada, int lon, int type) throws Exception {
 		int longo=lon-1;
 		//lon+=2;
 		byte[] dataTape = new byte[lon+2];

@@ -45,6 +45,8 @@ public class jMESYSLoader extends Thread {
 		public static final int Z80=5;
 		
 		public static final int TZX=6;
+		
+		public static final int SCR=7;
 
 		private String rom, rom128, if1rom, run, tape;
 
@@ -178,11 +180,17 @@ public class jMESYSLoader extends Thread {
 				else if(f.endsWith(".TAP")) kind = TAP;
 				else if(f.endsWith(".TZX")) kind = TZX;
 				else if(f.endsWith(".ROM")) kind = CART;
+				else if(f.endsWith(".SCR")) kind = SCR;
 				else {
 					jmesys.showStatus("Unknown format: "+text);
 					return;
 				}
-				Spectrum48k s = jmesys.spectrum;
+				Spectrum48k s = (Spectrum48k)jmesys.spectrum;
+				
+				if (kind != SCR) {
+					s.reset();
+				}
+				
 				s.pause(true);
 				if((kind == TAP) || (kind == TZX)) {
 					s.tape(null, false);

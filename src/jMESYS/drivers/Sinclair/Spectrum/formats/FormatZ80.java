@@ -12,6 +12,7 @@ import java.io.InputStream;
 
 import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.z80.Z80;
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
 import jMESYS.files.FileFormat;
@@ -199,10 +200,10 @@ public class FormatZ80 extends FileFormat {
 	}
 	
 	
-	public void loadFormat(String name, InputStream is, Spectrum48k computer) throws Exception {
+	public void loadFormat(String name, InputStream is, jMESYSComputer computer) throws Exception {
 		DataInputStream in = new DataInputStream(is);
 		computer.reset();
-		Z80 cpu = computer.cpu;
+		Z80 cpu = ((Spectrum48k)computer).cpu;
 
 		cpu.a(get8(in)); cpu.f(get8(in));
 		cpu.bc(get16(in));
@@ -229,7 +230,7 @@ public class FormatZ80 extends FileFormat {
 
 		if(pc != 0) {
 			if((f1&0x20)!=0)
-				uncompress_z80(computer, in, 16384, 49152);
+				uncompress_z80((Spectrum48k)computer, in, 16384, 49152);
 			else
 				poke_stream(computer, in, 16384, 49152);
 			return;
@@ -241,18 +242,18 @@ public class FormatZ80 extends FileFormat {
 		if(hm>1) System.out.println("Unsupported model: #"+hm);
 		get8(in);
 		if(get8(in)==0xFF) {
-			if(computer.if1rom != null) {
+			if(((Spectrum48k)computer).if1rom != null) {
                           /** @todo if1rom */
                           //spectrum.rom = spectrum.if1rom;
                         }
 		}
 		//if((get8(in)&4)!=0 && computer.ay_enabled && l>=23) {
-		if((get8(in)&4)!=0 && computer.audioChip.isEnabled() && l>=23) {
+		if((get8(in)&4)!=0 && computer.getAudioDevice().isEnabled() && l>=23) {
 			//computer.ay_idx = (byte)(get8(in) & 15);
-			computer.audioChip.ay_idx = (byte)(get8(in) & 15);
+			((Spectrum48k)computer).audioChip.ay_idx = (byte)(get8(in) & 15);
 			for(int i=0;i<16;i++){
 				//computer.ay_write(i, get8(in));
-				computer.audioChip.writeSoundCard(i, get8(in));
+				computer.getAudioDevice().writeSoundCard(i, get8(in));
 			}
 			l -= 17;
 		}
@@ -270,7 +271,7 @@ public class FormatZ80 extends FileFormat {
 			if(l == 0xFFFF)
 				poke_stream(computer, in, a, 16384);
 			else
-				uncompress_z80(computer, in, a, 16384);
+				uncompress_z80((Spectrum48k)computer, in, a, 16384);
 		}
 	}
 

@@ -4,6 +4,7 @@ import java.awt.Graphics;
 import java.awt.Image;
 import java.io.InputStream;
 
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.files.FileFormat;
 import jMESYS.gui.jMESYSDisplay;
@@ -17,7 +18,7 @@ public class FormatSCL extends FileFormat {
 		return strExtension;
 	}
 
-	public void loadFormat(String name, InputStream in, Spectrum48k cpu) throws Exception {
+	public void loadFormat(String name, InputStream in, jMESYSComputer cpu) throws Exception {
 		System.out.println("LOAD SCL");
 		
 		byte[] b = new byte[1];

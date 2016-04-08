@@ -1,5 +1,6 @@
 package jMESYS.gui;
 
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.jMESYSDriver;
 import jMESYS.drivers.jMESYSFamily;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
@@ -83,7 +84,7 @@ public class jMESYSMenu {
 	        	  
 	        	  
 				try {
-					Spectrum48k[] comps;
+					jMESYSComputer[] comps;
 					comps = fam.getModels();
 					
 					int numModels = comps.length;

@@ -2,6 +2,7 @@ package jMESYS.drivers.Sinclair.Spectrum.formats;
 
 import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.z80.Z80;
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
 import jMESYS.files.FileFormat;
@@ -66,10 +67,10 @@ public class FormatSNA extends FileFormat {
 		loadSNA(name, stream, cpu);		
 	}*/
 	
-	public void loadFormat( String name, InputStream is, Spectrum48k computer ) throws Exception {
+	public void loadFormat( String name, InputStream is, jMESYSComputer computer ) throws Exception {
 		DataInputStream in = new DataInputStream(is);
 		computer.reset();
-		Z80 cpu = computer.cpu;
+		Z80 cpu = ((Spectrum48k)computer).cpu;
 
 		cpu.i(get8(in));
 		cpu.hl(get16(in)); cpu.de(get16(in)); cpu.bc(get16(in));
@@ -84,26 +85,27 @@ public class FormatSNA extends FileFormat {
 		cpu.im(get8(in));
 		computer.out(254, get8(in));
                 
-                int[] ram49152 = new int[49152];
-                tomem(ram49152, 0, 49152, in);
+        int[] ram49152 = new int[49152];
+        tomem(ram49152, 0, 49152, in);
 
 		try {
 			cpu.pc(get16(in));
-                        /* It is 128K .SNA */
-                        System.out.println("It is 128K .SNA");
-                        int port7ffd = get8(in);
-                        int trdosrom = get8(in);
-                        computer.out(32765, port7ffd);
-                        poke_array(computer, ram49152, 16384, 49152);
-                        for (int i = 0; i < 8; i++) {
-                          if (i == 2 || i == 5 || (i == (port7ffd & 0x03)))
-                            continue;
-                          tomem(computer.get_rambank(i), 0, 16384, in);
-                        }
+            
+			/* It is 128K .SNA */
+            System.out.println("It is 128K .SNA");
+            int port7ffd = get8(in);
+            int trdosrom = get8(in);
+            computer.out(32765, port7ffd);
+            poke_array(computer, ram49152, 16384, 49152);
+            for (int i = 0; i < 8; i++) {
+              if (i == 2 || i == 5 || (i == (port7ffd & 0x03)))
+                continue;
+              tomem(((Spectrum48k)computer).get_rambank(i), 0, 16384, in);
+            }
                         
 		} catch(EOFException e) {
                         System.out.println("It is 48K .SNA");
-                        computer.rom = computer.rom48k;
+                        ((Spectrum48k)computer).rom = ((Spectrum48k)computer).rom48k;
                         poke_array(computer, ram49152, 16384, 49152);
 			int sp = cpu.sp();
 			cpu.pc(computer.mem16(sp));

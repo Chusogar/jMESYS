@@ -1,7 +1,7 @@
 package jMESYS.files;
 
 import jMESYS.core.cpu.CPU;
-import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.gui.jMESYSDisplay;
 
 import java.awt.Color;
@@ -24,8 +24,12 @@ public abstract class FileFormat {
 		super();
 	}
 	
+	public boolean resetBeforeLoad() {
+		return true;
+	}
+	
 	public abstract String getExtension();
-	public abstract void loadFormat( String name, InputStream is, Spectrum48k cpu ) throws Exception;
+	public abstract void loadFormat( String name, InputStream is, jMESYSComputer cpu ) throws Exception;
 	public abstract Image getScreen( String name, InputStream is, jMESYSDisplay display, Graphics g ) throws Exception;
 	
 	public static int get8(DataInputStream i) throws IOException {
@@ -43,7 +47,7 @@ public abstract class FileFormat {
      * @param pos int
      * @param len int
      */
-    public void poke_array(Spectrum48k computer, int[] a, int pos, int len) {
+    public void poke_array(jMESYSComputer computer, int[] a, int pos, int len) {
       for (int i = 0; i < len; i++) {
         computer.mem(pos + i, a[i]);
       }
@@ -66,7 +70,7 @@ public abstract class FileFormat {
 		return tapeBuffer;
 	}
     
-    public void poke_stream(Spectrum48k computer, DataInputStream in, int pos, int len) throws IOException {
+    public void poke_stream(jMESYSComputer computer, DataInputStream in, int pos, int len) throws IOException {
 		do {
 			computer.mem(pos++, FileFormat.get8(in));
 		} while(--len>0);
@@ -84,7 +88,7 @@ public abstract class FileFormat {
 		return l;
 	}
 	
-	public void load(String name, Spectrum48k cpu) throws Exception {
+	public void load(String name, jMESYSComputer cpu) throws Exception {
 		checkExtension(name);		
 		InputStream stream = getFileStream(name);
 		loadFormat(name, stream, cpu);

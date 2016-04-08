@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.Vector;
 
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.files.FileFormat;
 import jMESYS.gui.jMESYSDisplay;
@@ -22,7 +23,7 @@ public class FormatTXT extends FileFormat {
 		return strExtension;
 	}
 
-	public void loadFormat(String name, InputStream is, Spectrum48k cpu) throws Exception {
+	public void loadFormat(String name, InputStream is, jMESYSComputer cpu) throws Exception {
 		//int PROG = elS.laMemoria().cpu.mem16(0x5C53);
 		int PROG = cpu.mem16(0x5C53);
 	    //int linea = elS.laMemoria().cpu.mem(PROG);
@@ -32,7 +33,7 @@ public class FormatTXT extends FileFormat {
 	    if(linea < 10000){
 	    	
 	    	File f = new File("/a.txt");
-	    	escribe_datos(PROG, new FileOutputStream(f), linea, cpu);
+	    	escribe_datos(PROG, new FileOutputStream(f), linea, (Spectrum48k)cpu);
 	    }
 		
 	}

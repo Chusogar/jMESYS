@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import jMESYS.core.cpu.CPU;
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
 import jMESYS.files.FileFormat;
@@ -53,7 +54,7 @@ public class FormatTAP extends FileFormat {
         return new String(msg);
     }
 	
-	public void loadFormat(String name, InputStream is, Spectrum48k computer) throws Exception {
+	public void loadFormat(String name, InputStream is, jMESYSComputer computer) throws Exception {
 		System.out.println("Load TAP");
 		
 		byte data[] = null;

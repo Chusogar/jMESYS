@@ -300,4 +300,12 @@ public class SpectrumDisplay extends jMESYSDisplay {
         
         
 	}
+
+	public int getW() {
+		return W;
+	}
+
+	public int getH() {
+		return H;
+	}
 }

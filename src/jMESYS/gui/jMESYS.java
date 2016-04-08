@@ -22,10 +22,12 @@ import javax.swing.tree.DefaultMutableTreeNode;
 
 import jMESYS.core.cpu.z80.Z80;
 import jMESYS.core.devices.printer.jMESYSPrinterFrame;
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.jMESYSDriver;
 import jMESYS.drivers.jMESYSFamily;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.drivers.Sinclair.Spectrum.SpectrumModels;
+import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSCR;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTAP;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTXT;
@@ -44,7 +46,7 @@ public class jMESYS extends Applet
 	implements Runnable, KeyListener, FocusListener,
 		ComponentListener, WindowListener, ActionListener
 {
-	public Spectrum48k spectrum;
+	public jMESYSComputer spectrum;
 	private jMESYSLoader loader;
 	private Image img;
 	private Image imgBackup;
@@ -127,7 +129,7 @@ public class jMESYS extends Applet
                 spectrum = new Spectrum48k(mode);
                 
                 /* keymatrix effect */
-                spectrum.setKeymatrix(ini_keymatrix);
+                ((Spectrum48k)spectrum).setKeymatrix(ini_keymatrix);
 
 		if(param("focus", true))
 			addComponentListener(this);
@@ -138,13 +140,13 @@ public class jMESYS extends Applet
 			//InputStream in = resource("/games/Sinclair/Spectrum/ShadowOfTheUnicorn.rom");
 			InputStream in = resource("/bios/Sinclair/Spectrum/spectrum.rom");
 			System.out.println(in==null);
-			if(in==null || FileFormat.tomem(spectrum.rom48k, 0, 16384, in) != 0)
+			if(in==null || FileFormat.tomem(((Spectrum48k)spectrum).rom48k, 0, 16384, in) != 0)
 				System.out.println("Can't read /rom/spectrum.rom");
 		}
                 String rom128 = param("rom128");
                 if (mode != SpectrumModels.MODE_48K && rom128 == null) {
                         InputStream in = resource("/bios/Sinclair/Spectrum/zx128_0.rom");
-                        if(in==null || FileFormat.tomem(spectrum.rom128k, 0, 16384, in) != 0)
+                        if(in==null || FileFormat.tomem(((Spectrum48k)spectrum).rom128k, 0, 16384, in) != 0)
                                 showStatus("Can't read /rom/128.rom");
                 }
 
@@ -159,15 +161,15 @@ public class jMESYS extends Applet
 
 		String a = param("arrows");
                 if (a != null)
-                  spectrum.setArrows(a);
+                	((Spectrum48k)spectrum).setArrows(a);
                 else
                 if (ini_arrows != null)
-                  spectrum.setArrows(ini_arrows);
+                	((Spectrum48k)spectrum).setArrows(ini_arrows);
 
                 if (param("ay", ini_ay)){
                   //spectrum.ay(true);
                 	try {
-						spectrum.audioChip.setEnabled(true);
+						spectrum.getAudioDevice().setEnabled(true);
 					} catch (Exception e) {
 						e.printStackTrace(System.out);
 					}
@@ -176,7 +178,7 @@ public class jMESYS extends Applet
                 if (param("muted", ini_muted)){
                   //spectrum.mute(true);
                 	try {
-						spectrum.audioChip.setMuted(true);
+						spectrum.getAudioDevice().setMuted(true);
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace(System.out);
@@ -222,7 +224,7 @@ public class jMESYS extends Applet
 		loader.start();
 	}
 	
-	private Spectrum48k getComputer() {
+	private jMESYSComputer getComputer() {
 		return spectrum;
 	}
 	
@@ -249,7 +251,7 @@ public class jMESYS extends Applet
 		loader.interrupt();
 		//spectrum.audio.close();
 		try {
-			spectrum.audioChip.close();
+			spectrum.getAudioDevice().close();
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
 		}
@@ -471,17 +473,17 @@ public class jMESYS extends Applet
 		} else if(c==e.VK_F11) {
 			//spectrum.mute(m = !spectrum.muted);
 			try {
-				spectrum.audioChip.muteSoundCard(m = !spectrum.audioChip.isMuted());
+				spectrum.getAudioDevice().muteSoundCard(m = !spectrum.getAudioDevice().isMuted());
 			} catch (Exception e1) {
 				e1.printStackTrace(System.out);
 			}
 			//v = spectrum.volumeChg(0);
-			v = spectrum.audioChip.volumeChg(0);
+			v = spectrum.getAudioDevice().volumeChg(0);
 		} else if(c==e.VK_PAGE_UP || c==e.VK_PAGE_DOWN) {
 			//m = spectrum.muted;
-			m=spectrum.audioChip.isMuted();
+			m=spectrum.getAudioDevice().isMuted();
 			//v = spectrum.volumeChg(c==e.VK_PAGE_UP ? +5 : -5);
-			v=spectrum.audioChip.volumeChg(c==e.VK_PAGE_UP ? +5 : -5);
+			v=spectrum.getAudioDevice().volumeChg(c==e.VK_PAGE_UP ? +5 : -5);
 		} else {
 			keyEvent(e);
 			return;
@@ -625,6 +627,7 @@ public class jMESYS extends Applet
 				case jMESYSLoader.Z80: load_z80(in); break;
 				case jMESYSLoader.CART:
 					spectrum.reset();
+				case jMESYSLoader.SCR: load_scr(in); break;
 				default:
 					load_rom(in, dl_kind);
 			}
@@ -641,6 +644,15 @@ public class jMESYS extends Applet
 		
 	}
 	
+	private void load_scr(InputStream in) {
+		try {
+			FormatSCR fSCR = new FormatSCR();
+			fSCR.loadFormat("SN", in, spectrum);
+		} catch (Exception e){
+			e.printStackTrace(System.out);
+		}		
+		
+	}
 	
 	private void load_rom(InputStream in, int kind) throws IOException {
 		int m[] = new int[0x8000];
@@ -650,13 +662,13 @@ public class jMESYS extends Applet
 		}
 		if(kind == jMESYSLoader.IF1ROM) {
 			System.arraycopy(m,0,m,0x4000,0x4000);
-			spectrum.if1rom = m;
+			((Spectrum48k)spectrum).if1rom = m;
 			return;
 		}
 		if(kind == jMESYSLoader.ROM)
-			spectrum.rom48k = m;
+			((Spectrum48k)spectrum).rom48k = m;
                 if (kind == jMESYSLoader.ROM128)
-                        spectrum.rom128k = m;
+                	((Spectrum48k)spectrum).rom128k = m;
 //		spectrum.rom = m;
 	}
 
@@ -766,7 +778,7 @@ public class jMESYS extends Applet
 					//System.out.println("Desactivamos CPU");
 					this.spectrum.pause(true);
 					//this.spectrum.mute(true);
-					this.spectrum.audioChip.muteSoundCard(true);
+					this.spectrum.getAudioDevice().muteSoundCard(true);
 					
 					
 				} catch (Exception e) {
@@ -795,7 +807,9 @@ public class jMESYS extends Applet
 					//String name="D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/ShadowOfTheUnicorn.Z80";
 					//fZ80.loadFormat("D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/ShadowOfTheUnicorn.Z80", new FileInputStream("D:/workspace/jMESYSalpha/bin/games/Sinclair/Spectrum/ShadowOfTheUnicorn.Z80"), this);
 					try {
-						getComputer().reset();
+						if (ff.resetBeforeLoad()) {
+							getComputer().reset();
+						}
 						String nameChecked = jMESYSFileZIP.checkZIP( name );
 						System.out.println("Voy a cargar "+nameChecked);
 						ff.loadFormat(nameChecked, new FileInputStream(nameChecked), getComputer());
@@ -893,7 +907,7 @@ public class jMESYS extends Applet
 					//getComputer().resetKeyboard();
 					//getComputer().mute(true);
 					try {
-						getComputer().audioChip.muteSoundCard(true);
+						getComputer().getAudioDevice().muteSoundCard(true);
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -902,7 +916,7 @@ public class jMESYS extends Applet
 					if (getComputer().soundON) {
 						//getComputer().mute(false);
 						try {
-							getComputer().audioChip.muteSoundCard(false);
+							getComputer().getAudioDevice().muteSoundCard(false);
 						} catch (Exception e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -912,7 +926,7 @@ public class jMESYS extends Applet
 					System.out.println("Sound Off");
 					//getComputer().mute(true);
 					try {
-						getComputer().audioChip.setMuted(true);
+						getComputer().getAudioDevice().setMuted(true);
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -922,7 +936,7 @@ public class jMESYS extends Applet
 					System.out.println("Sound On");
 					//getComputer().mute(false);
 					try {
-						getComputer().audioChip.setMuted(false);
+						getComputer().getAudioDevice().setMuted(false);
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -1071,7 +1085,7 @@ public class jMESYS extends Applet
 					this.spectrum.pause(false);
 					if (getComputer().soundON) {
 						//getComputer().mute(false);
-						getComputer().audioChip.muteSoundCard(false);
+						getComputer().getAudioDevice().muteSoundCard(false);
 					}
 					//this.getComputer().player.play();
 					//this.getComputer().execute();
@@ -1095,7 +1109,8 @@ public class jMESYS extends Applet
             return;  // User canceled or clicked the dialog's close box.
         System.out.println( fileDialog.getSelectedFile() );
         try {
-			getComputer().reset();
+			
+        	//getComputer().reset();
 			/*FileFormat fl = fileDialog.getLoaderFile(fileDialog.getSelectedFile().getAbsolutePath());
 			if (fl != null) {
 				String name = fileDialog.getSelectedFile().getAbsolutePath();

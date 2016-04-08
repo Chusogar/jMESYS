@@ -35,6 +35,8 @@ public abstract class jMESYSDisplay implements ImageProducer {
 	public abstract void force_redraw();
 	public abstract void update_screen(ImageConsumer ic);
 	public abstract int[] getDefaultPalette();
+	public abstract int getW();
+	public abstract int getH();
 	
 	public static ColorModel cm = null;
 	
@@ -105,6 +107,15 @@ public abstract class jMESYSDisplay implements ImageProducer {
 
 	public int getHeight() {
 		return height;
+	}
+	
+	public void setWidth(int w) {
+		//System.out.println("getWidth="+width);
+		width=w;
+	}
+
+	public void setHeight(int h) {
+		height=h;
 	}
 	
 	public int[] getPalette() {

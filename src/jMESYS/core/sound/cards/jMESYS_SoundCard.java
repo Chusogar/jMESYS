@@ -19,6 +19,7 @@ public abstract class jMESYS_SoundCard implements jMESYSDevice {
 	public abstract void writeSoundCard(int n, int v) throws Exception;
 	public abstract int getValueSoundCard() throws Exception;
 	public abstract void updateSoundCard(int cpuTime) throws Exception;
+	public abstract int volumeChg(int chg);
 	
 	public jMESYS_SoundCard(int Hz){
 		super();

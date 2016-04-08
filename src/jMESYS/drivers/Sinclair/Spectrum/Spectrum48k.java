@@ -27,12 +27,15 @@ import jMESYS.core.cpu.CPU;
 import jMESYS.core.cpu.z80.Z80;
 import jMESYS.core.devices.jMESYSDevice;
 import jMESYS.core.devices.printer.jMESYSPrinterFrame;
+import jMESYS.core.sound.cards.jMESYS_SoundCard;
 //import jMESYS.core.sound.Audio;
 import jMESYS.core.sound.cards.AY_3_8912.AY_3_8912;
+import jMESYS.drivers.jMESYSComputer;
 //import jMESYS.core.sound.Audio;
 import jMESYS.drivers.Sinclair.Spectrum.devices.printers.ZXPrinter;
 import jMESYS.drivers.Sinclair.Spectrum.display.SpectrumDisplay;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSCL;
+import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSCR;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSNA;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTAP;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatTZX;
@@ -40,7 +43,7 @@ import jMESYS.drivers.Sinclair.Spectrum.formats.FormatZ80;
 import jMESYS.files.FileFormat;
 import jMESYS.gui.jMESYSDisplay;
 
-public class Spectrum48k extends Thread implements CPU
+public class Spectrum48k extends jMESYSComputer
 {
 
 	public final Z80 cpu = new Z80(this);
@@ -48,9 +51,6 @@ public class Spectrum48k extends Thread implements CPU
 	public jMESYSDevice[] devices = null;
 	public Vector vDevices = new Vector();
 	
-	//public static final int MODE_48K = 0;
-    //public static final int MODE_128K = 1;
-
 	public int rom48k[] = new int[16384];
     public int rom128k[] = new int[16384];
     private final int ram48k[][] = new int[3][];
@@ -83,572 +83,6 @@ public class Spectrum48k extends Thread implements CPU
 	private static int ear = 0xbf;
 	private boolean tapeValue = false;
 	
-	// tape variables
-	private int lon = 0;
-	private int pas = 0;
-	private int leader = 0;
-	private int pulse_leader = 0;
-	private int pulse_sync_1 = 0;
-	private int pulse_sync_2 = 0;
-	private int pulse_data_0 = 0;
-	private int pulse_data_1 = 0;
-	private int bits_ult = 0;
-	//pause in mSeconds between blocks, default 1 second
-	private int pausa = 1000;
-	// T-states for reading a tape data
-	private int tapein = 0;
-	//Auxiliar integer for reading the tape
-	private int code = 0;
-	//Number & code of the last played block
-	private int block = 0;
-	private int code_block = 0;
-	//for Zipped tapes
-	private int count_ZIP = 0;
-	
-	private final InputStream resource(String name)
-	{
-		System.out.println(name);
-		return getClass().getResourceAsStream(name);
-	}
-	
-	public void addDevice(jMESYSDevice dev) {
-		vDevices.addElement( dev );
-	}
-	
-	public jMESYSDevice[] getDevices() {
-		
-		int numDevices = vDevices.size();
-		devices = new jMESYSDevice[ numDevices ];
-		
-		for (int i=0 ; i<numDevices ; i++) {
-			devices[i] = (jMESYSDevice) vDevices.elementAt(i);
-		}
-		
-		return devices;
-	}
-	  
-	// Reads one single byte of the tape
-	public int readTape(InputStream is) throws Exception{
-	    int j = 0;
-	    try{
-	      
-	      byte[] b = new byte[1];
-	      j = is.read(b, 0, 1);
-	      j = ((b[0] + 256) & 0xff);
-	    }catch(Exception e){
-	      e.printStackTrace(System.out);
-	      throw new Exception("Tape Error");
-	    }
-	    return j;
-	  }
-	
-	//Skips n tape bytes
-	public void skip(int n, InputStream is) throws Exception {
-		is.skip(n);	  
-	}
-	
-	public void stopTape(){
-		System.out.println("Stopping the tape");
-	    //playin(false);
-	    tapeValue = false;
-	    try{
-	      //continuar = false;
-	      //contador = 0;
-	      pausa = 1000;
-	      //monitor.aviso();
-	      //play.stop();
-	    }catch(Exception ex){
-	      ex.printStackTrace(System.out);
-	    }
-	  }
-	
-	//Rewind the tape to the first block
-	  public void rewindTape(InputStream is){
-		System.out.println("Rewind Tape");
-	    try{
-	      
-	      is.close();
-	      //is = new FileInputStream(F);
-	      block = 0;
-	      code_block = 0;
-	    }catch(Exception ex){
-	      ex.printStackTrace();
-	    }
-	  }
-	  
-	//how many bytes are available in the tape (to be readed)
-	  public int available(InputStream is){
-	    try{
-	      int aux = is.available();
-	      
-	      return aux;
-	    }catch(Exception ex){
-	      ex.printStackTrace();
-	      return 0;
-	    }
-	  }
-	  
-	//Salta un bloque en una cinta TZX
-	  public void next_block_TZX(InputStream is){
-	    try{
-	      code = readTape(is);
-	      lon = 0;
-	      block++;
-	      code_block = code;
-	      switch (code){
-	        case 0x10:{
-	          skip(2, is);
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          break;
-	        }
-	        case 0x11:{
-	          skip(15, is);
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          lon |= (readTape(is) << 16);
-	          break;
-	        }
-	        case 0x12:
-	        case 0x2A:{
-	          lon = 4;
-	          break;
-	        }
-	        case 0x13:{
-	          lon = readTape(is) * 2;
-	          break;
-	        }
-	        case 0x14:{
-	          skip(7, is);
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          lon |= (readTape(is) << 16);
-	          break;
-	        }
-	        case 0x15:{
-	          skip(5, is);
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          lon |= (readTape(is) << 16);
-	          break;
-	        }
-	        case 0x16:
-	        case 0x17:{
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          lon |= (readTape(is) << 16);
-	          lon |= (readTape(is) << 24);
-	          lon -= 4;
-	          break;
-	        }
-	        case 0x20:
-	        case 0x23:
-	        case 0x24:{
-	          lon = 2;
-	          break;
-	        }
-	        case 0x21:
-	        case 0x30:{
-	          lon = readTape(is);
-	          break;
-	        }
-	        case 0x22:
-	        case 0x25:{
-	          break;
-	        }
-	        case 0x26:{
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          lon = lon * 2;
-	          break;
-	        }
-	        case 0x28:
-	        case 0x32:{
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          break;
-	        }
-	        case 0x31:{
-	          skip(1, is);
-	          lon = readTape(is);
-	          break;
-	        }
-	        case 0x33:{
-	          lon = readTape(is) * 3;
-	          break;
-	        }
-	        case 0x34:{
-	          lon = 8;
-	          break;
-	        }
-	        case 0x35:{
-	          skip(10, is);
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          lon |= (readTape(is) << 16);
-	          lon |= (readTape(is) << 24);
-	          break;
-	        }
-	        case 0x40:{       /*SNAPSHOT*/
-	          skip(1, is);
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          lon |= (readTape(is) << 16);
-	          break;
-	        }
-	        case 0x5A:{
-	          lon = 9;
-	          break;
-	        }
-	        default:{
-	          lon = readTape(is);
-	          lon |= (readTape(is) << 8);
-	          lon |= (readTape(is) << 16);
-	          lon |= (readTape(is) << 24);
-	          break;
-	        }
-	      }
-	      skip(lon, is);
-	    }catch(Exception ex){
-	      ex.printStackTrace();
-	    }
-	  }
-	
-	  public void play_TZX(InputStream is){
-		  
-		    try{
-		    	System.out.println("Play TZX "+is.available());
-		    	
-		      tapein = (pausa * 69888) / 20;
-
-		      if(tapein > 0){
-		        tapeValue = false;
-		        cont(tapein);
-		        pausa = 0;
-		      }
-		      
-		      lon = 0;
-		      pas = 0;
-		      leader = 0;
-		      pulse_leader = 0;
-		      pulse_sync_1 = 0;
-		      pulse_sync_2 = 0;
-		      pulse_data_0 = 0;
-		      pulse_data_1 = 0;
-		      bits_ult = 0;
-
-		      code = readTape(is);
-		      block++;
-		      code_block = code;
-
-		      //System.out.println(code + " FIN PAUSA");
-
-		      switch(code){
-		        case 0x10:{
-		        	System.out.println(code + " 0x10");
-		          pas = readTape(is);
-		          pas = pas | (readTape(is) << 8);
-		          lon = readTape(is);
-		          lon = lon | (readTape(is) << 8);
-		          int aux = readTape(is);
-		          if((lon == 0x13) && (aux == 0)){
-		            leader = 8064;
-		          }else{
-		            leader = 3220;
-		          }
-		          skip(-1, is);
-		          pulse_leader = 2168;
-		          pulse_sync_1 = 667;
-		          pulse_sync_2 = 735;
-		          pulse_data_0 = 855;
-		          pulse_data_1 = 1710;
-		          bits_ult = 8;
-		          break;
-		        }
-		        case 0x11:{
-		        	System.out.println(code + " 0x11");
-		          pulse_leader = readTape(is);
-		          pulse_leader |= (readTape(is) << 8);
-		          pulse_sync_1 = readTape(is);
-		          pulse_sync_1 |= (readTape(is) << 8);
-		          pulse_sync_2 = readTape(is);
-		          pulse_sync_2 |= (readTape(is) << 8);
-		          pulse_data_0 = readTape(is);
-		          pulse_data_0 |= (readTape(is) << 8);
-		          pulse_data_1 = readTape(is);
-		          pulse_data_1 |= (readTape(is) << 8);
-		          leader = readTape(is);
-		          leader |= (readTape(is) << 8);
-		          bits_ult = readTape(is);
-		          pas = readTape(is);
-		          pas |= (readTape(is) << 8);
-		          lon = readTape(is);
-		          lon |= (readTape(is) << 8);
-		          lon |= (readTape(is) << 16);
-		          break;
-		        }
-		        case 0x12:{
-		        	System.out.println(code + " 0x12");
-		          pulse_leader = readTape(is);
-		          pulse_leader |= (readTape(is) << 8);
-		          leader = readTape(is);
-		          leader |= (readTape(is) << 8);
-		          //valor = true;
-		          for(int i = 0; i < leader; i++){
-		            tapeValue = !tapeValue;
-		            cont(pulse_leader);
-		          }
-		          return;
-		        }
-		        case 0x13:{
-		        	System.out.println(code + " 0x13");
-		          leader = readTape(is);
-		          tapeValue = true;
-		          for(int i = 0; i < leader; i++){
-		            pulse_leader = readTape(is);
-		            pulse_leader |= (readTape(is) << 8);
-		            tapeValue = !tapeValue;
-		            cont(pulse_leader);
-		          }
-		          return;
-		        }
-		        case 0x14:{
-		        	System.out.println(code + " 0x14");
-		          pulse_data_0 = readTape(is);
-		          pulse_data_0 |= (readTape(is) << 8);
-		          pulse_data_1 = readTape(is);
-		          pulse_data_1 |= (readTape(is) << 8);
-		          bits_ult = readTape(is);
-		          pas = readTape(is);
-		          pas |= (readTape(is) << 8);
-		          lon = readTape(is);
-		          lon |= (readTape(is) << 8);
-		          lon |= (readTape(is) << 16);
-		          break;
-		        }
-		        case 0x15:{
-		        	System.out.println(code + " 0x15");
-		          skip(5, is);
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          num |= (readTape(is) << 16);
-		          skip(num, is);
-		          return;
-		        }
-		        case 0x16:
-		        	
-		        case 0x17:{
-		        	System.out.println(code + " 0x17");
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          num |= (readTape(is) << 16);
-		          num |= (readTape(is) << 24);
-		          skip(num - 4, is);
-		          return;
-		        }
-		        case 0x20:{
-		        	System.out.println(code + " 0x20");
-		          pas = readTape(is);
-		          pas |= (readTape(is) << 8);
-		          pausa = pas;
-		          if(pas == 0){
-		            stopTape();
-		          }
-		          return;
-		        }
-		        case 0x21:{
-		        	System.out.println(code + " 0x21");
-		          int num = readTape(is);
-		          skip(num, is);
-		          num = readTape(is);
-		          while(num != 0x22){
-		            skip(-1, is);
-		            play_TZX(is);
-		            num = readTape(is);
-		          }
-		          return;
-		        }
-		        case 0x22:{
-		        	System.out.println(code + " 0x22");
-		          return;
-		        }
-		        case 0x23:{       /*SALTAR*/
-		        	System.out.println(code + " 0x23");
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          if(num >= 0){
-		            for(int i = 0; i < num; i++){
-		              next_block_TZX(is);
-		            }
-		          }
-		          return;
-		        }
-		        case 0x24:{
-		        	System.out.println(code + " 0x24");
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          if(num < 1){
-		            return;
-		          }
-		          int marca = available(is);
-		          int aux2 = block;
-			        for(int i = 0; i < num; i++){
-		            rewindTape(is);
-		            block = aux2;
-		            skip(available(is) - marca, is);
-				    int aux = readTape(is);
-		            while(aux != 0x25){
-				          skip(-1, is);
-		              play_TZX(is);
-		              aux = readTape(is);
-		            }
-		          }
-		          return;
-		        }
-		        case 0x25:
-		        case 0x27:{
-		        	System.out.println(code + " 0x27");
-		          return;
-		        }
-		        case 0x26:{
-		        	System.out.println(code + " 0x26");
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          skip(num * 2, is);
-		          return;
-		        }
-		        case 0x28:{
-		        	System.out.println(code + " 0x28");
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          skip(num, is);
-		          return;
-		        }
-		        case 0x2A:{
-		        	System.out.println(code + " 0x2A");
-		          skip(4, is);
-		          stopTape();
-		          return;
-		        }
-		        case 0x30:{
-		        	System.out.println(code + " 0x30");
-		          int num = readTape(is);
-		          skip(num, is);
-		          return;
-		        }
-		        case 0x31:{
-		        	System.out.println(code + " 0x31");
-		          skip(1, is);
-		          int num = readTape(is);
-		          skip(num, is);
-		          return;
-		        }
-		        case 0x32:{
-		        	System.out.println(code + " 0x32");
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          skip(num, is);
-		          return;
-		        }
-		        case 0x33:{
-		        	System.out.println(code + " 0x33");
-		          int num = readTape(is);
-		          skip(num * 3, is);
-		          return;
-		        }
-		        case 0x34:{
-		        	System.out.println(code + " 0x34");
-		          skip(8, is);
-		          return;
-		        }
-		        case 0x35:{
-		        	System.out.println(code + " 0x35");
-		          skip(10, is);
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          num |= (readTape(is) << 16);
-		          num |= (readTape(is) << 24);
-		          skip(num, is);
-		          return;
-		        }
-		        case 0x40:{
-		        	System.out.println(code + " 0x40");
-		          skip(1, is);
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          num |= (readTape(is) << 16);
-		          skip(num, is);
-		          return;
-		        }
-		        case 0x5A:{
-		        	System.out.println(code + " 0x5A "+is.available());
-		          skip(9, is);
-		          System.out.println(code + " 0x5A FIN "+is.available());
-		          return;
-		        }
-		        default:{
-		        	System.out.println(code + " default");
-		          int num = readTape(is);
-		          num |= (readTape(is) << 8);
-		          num |= (readTape(is) << 16);
-		          num |= (readTape(is) << 24);
-		          skip(num, is);
-		          stopTape();
-		          return;
-		        }
-		      }
-		      System.out.println("Paso1");
-		      if(leader != 0){
-		        tapeValue = true;
-		        for(int i = 0; i < leader; i++){
-		          tapeValue = !tapeValue;
-		          cont(pulse_leader);
-		        }
-		        if(tapeValue == false){
-		          tapeValue = true;
-		          cont(pulse_leader);
-		        }
-		      }
-		      System.out.println("Paso2");
-		      if(pulse_sync_1 != 0){
-		        tapeValue = false;
-		        cont(pulse_sync_1);
-		        tapeValue = true;
-		        cont(pulse_sync_2);
-		      }
-		      System.out.println("Paso3");
-		      int aux = 0;
-		      int temp = 0;
-		      for(int i = 0; i < (lon - 1); i++){
-		    	  System.out.println("Paso4");
-		        aux = readTape(is);
-		        for(int j = 0; j < 8; j++){
-		        	System.out.println("Paso5");
-		          temp = (((aux & 0x80) != 0) ? pulse_data_1 : pulse_data_0);
-		          tapeValue = false;
-		          cont(temp);
-		          tapeValue = true;
-		          cont(temp);
-		          aux <<= 1;
-		        }
-		      }
-		      System.out.println("Paso6");
-		      aux = readTape(is);
-		      for(int j = 0; j < bits_ult; j++){
-		        temp = (((aux & 0x80) != 0) ? pulse_data_1 : pulse_data_0);
-		        tapeValue = false;
-		        cont(temp);
-		        tapeValue = true;
-		        cont(temp);
-		        aux <<= 1;
-		      }
-		      pausa = pas;
-		      System.out.println("Paso7");
-		    }catch(Exception ex){
-		      ex.printStackTrace(System.out);
-		    }
-		  }
-
 
 	
 	// file formats supported
@@ -681,7 +115,7 @@ public class Spectrum48k extends Thread implements CPU
 
 	public Spectrum48k(int mode)
 	{
-		super("Spectrum");
+				super("Spectrum");
                 this.mode = mode;
                 keymatrix = true;
                 rom = mode == SpectrumModels.MODE_48K ? rom48k : rom128k;
@@ -713,7 +147,7 @@ public class Spectrum48k extends Thread implements CPU
 		}
 	}
 
-	public void run()
+	/*public void run()
 	{
 		try {
 			frames();
@@ -721,9 +155,9 @@ public class Spectrum48k extends Thread implements CPU
 		} catch(Exception e) {
 			e.printStackTrace(System.out);
 		}		
-	}
+	}*/
 
-	private void end_frame() {
+	public void end_frame() {
 		
 		try {
 			//au_update();
@@ -753,102 +187,11 @@ public class Spectrum48k extends Thread implements CPU
 		audioChip.setLevel( audioChip.getLevel() - (audioChip.getLevel() >> 8) );
 	}
 
-	private long time;
-	private int timet;
+	
+	
+	
 
-	private void frames() throws InterruptedException
-	{
-		time = System.currentTimeMillis();
-		cpu.time = -14335;
-		cpu.time_limit = 55553;
-		//au_time = cpu.time;
-		audioChip.setAudioTime(cpu.time);
-		
-		tapeValue = false;
-		
-		for(;;) {
-			byte[] tap = null;
-			boolean tend = false;
-			synchronized(this) {
-				if(display.want_scale != display.scale) {
-					display.scale = display.want_scale;
-					if (display.scale == 3) { // Full Screen
-						Dimension d = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
-						
-						display.width=d.width; 
-						display.height=d.height;
-					
-					} else { // scale 1 or 2
-						display.width=display.scale*display.W; 
-						display.height=display.scale*display.H;
-					}
-					
-					notifyAll();
-					display.abort_consumers();
-				}
-				if(want_pause != paused) {
-					paused = want_pause;
-					notifyAll();
-				}
-				if(stop_loading) {
-					System.out.println("stop_loading");
-					loading = stop_loading = false;
-					notifyAll();
-				}
-				if(!paused) {
-					tap = tape;
-					tend = tape_ready;
-					if(!loading && tap!=null){
-						loading = check_load();						
-					}
-						
-				}
-			}
-
-			update_keyboard();
-			refresh_new();
-			//System.out.println("Loading..."+loading);
-			if(paused) {
-				cpu.time = cpu.time_limit;
-			} else if(loading) {
-				loading = do_load(tap, tend);
-				cpu.time = cpu.time_limit;
-			} else {
-				cpu.interrupt(0xFF);
-				cpu.execute();
-			}
-			end_frame();
-
-			/* sync */
-
-			timet += 121;
-			if(timet >= 125) {timet -= 125; time++;}
-			time += 19;
-
-			long t = System.currentTimeMillis();
-			if(t < time) {
-				t = time-t;
-				sleep(t);
-			} else {
-				yield();
-				if(interrupted())
-					break;
-				t -= 100;
-				if(t > time)
-					time = t;
-			}
-		}
-	}
-
-	boolean paused = true;
-	boolean want_pause = true;
-
-	public synchronized void pause(boolean y) throws InterruptedException
-	{
-		want_pause = y;
-		while(paused != want_pause)
-			wait();
-	}
+	
 
 	public synchronized void reset()
 	{
@@ -1155,27 +498,6 @@ public class Spectrum48k extends Thread implements CPU
 		}
 	}
 
-	
-
-	
-
-	public synchronized void scale(int m)
-	{
-		display.want_scale = m;
-		display.scale=m;
-		System.out.println("SCALE="+display.scale);
-		try {
-			while(display.scale != m) wait();
-		} catch(InterruptedException e) {
-			currentThread().interrupt();
-		}
-	}
-
-	public int scale() {
-		//System.out.println("SCALE="+display.scale);
-		return display.scale;
-	}
-
 
 	int flash_count = 16;
 	int flash = 0x8000;
@@ -1184,7 +506,7 @@ public class Spectrum48k extends Thread implements CPU
 
 	private int refresh_t, refresh_a, refresh_b, refresh_s;
 
-	private final void refresh_new() {
+	public void refresh_new() {
 		refresh_t = refresh_b = 0;
 		refresh_s = display.Mv*display.W + display.Mh;
 		refresh_a = 0x1800;
@@ -1379,11 +701,11 @@ loop:
 
 	public final int keyboard[] = new int[8];
 	public int kempston = 0;
-	public final KeyEvent keys[] = new KeyEvent[8];
+	
 	static final int arrowsDefault[] = {0143, 0124, 0134, 0144};
 	int arrows[] = arrowsDefault;
 
-	void update_keyboard() {
+	public void update_keyboard() {
 		for(int i=0; i<8; i++) keyboard[i] = 0xFF;
 		kempston = 0;
 
@@ -1482,7 +804,7 @@ loop:
 	}
 
 	/* tape */
-	private boolean check_load()
+	public boolean check_load()
 	{
 		//System.out.println("check_load/tape_blk="+tape_blk+" length="+tape.length);
 		int pc = cpu.pc();
@@ -1527,32 +849,9 @@ loop:
 		return true;
 	}
 
-	private boolean loading, stop_loading;
-	private byte[] tape;
-	private int tape_blk;
-	private int tape_pos;
-	private boolean tape_changed = false;
-	private boolean tape_ready = false;
+	
 
-	public synchronized void stop_loading()
-	{
-		stop_loading = true;
-		try {
-			while(loading) wait();
-		} catch(InterruptedException e) {
-			currentThread().interrupt();
-		}
-	}
-
-	public synchronized void tape(byte[] tape, boolean end)
-	{
-		if(tape==null)
-			tape_changed = true;
-		tape_ready = end;
-		this.tape = tape;
-	}
-
-	private final boolean do_load(byte[] tape, boolean ready)
+	public boolean do_load(byte[] tape, boolean ready)
 	{
 		System.out.println("do_load/block="+tape_blk);
 		if(tape_changed || (keyboard[7]&1)==0) {
@@ -1704,18 +1003,19 @@ loop:
 	}
 
 	public jMESYSDisplay getDisplay() {
-		//System.out.println("DISPLAY="+display);
+		//System.out.println("DISPLAYSP48="+display);
 		return display;
 	}
 	
-	public FileFormat[] getSupportedFileFormats() throws Exception {
+	public FileFormat[] getSupportedFileFormats() {
 		if (supportedFormats == null){
 			supportedFormats = new FileFormat[] {
 				new FormatSNA(),
 				new FormatTAP(),
 				new FormatTZX(),
 				new FormatZ80(),
-				new FormatSCL()
+				new FormatSCL(),
+				new FormatSCR()
 			};
 		}
 		
@@ -1801,5 +1101,36 @@ loop:
 		} else {
 			System.out.println("MODE "+mode+" NOT SUPPORTED!!!!");
 		}
+	}
+
+	public jMESYS_SoundCard getAudioDevice() {
+		return audioChip;
+	}
+
+	@Override
+	public void setModel(int iModel) throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void setCPUtime(int t) {
+		cpu.time=t;
+	}
+
+	public int getCPUtime() {
+		return cpu.time;
+	}
+
+	public void setCPUtimeLimit(int t) {
+		cpu.time_limit=t;
+	}
+
+	public int getCPUtimeLimit() {
+		return cpu.time_limit;
+	}
+
+	public void executeCPU() throws Exception {
+		cpu.interrupt(0xFF);
+		cpu.execute();
 	}
 }
