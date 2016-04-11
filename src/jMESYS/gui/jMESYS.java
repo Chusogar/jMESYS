@@ -25,6 +25,8 @@ import jMESYS.core.devices.printer.jMESYSPrinterFrame;
 import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.jMESYSDriver;
 import jMESYS.drivers.jMESYSFamily;
+import jMESYS.drivers.Atari.A2600.Atari2600Models;
+import jMESYS.drivers.Coleco.ColecoVision.ColecoVisionModels;
 import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 import jMESYS.drivers.Sinclair.Spectrum.SpectrumModels;
 import jMESYS.drivers.Sinclair.Spectrum.formats.FormatSCR;
@@ -76,7 +78,7 @@ public class jMESYS extends Applet
 	    splash.display();
 			    
 		spectrum=new Spectrum48k(0);
-
+		
 		frame.add(this);
 		  
 		frame.addWindowListener(this);
@@ -212,6 +214,7 @@ public class jMESYS extends Applet
         showStatus("jMESYS");
         if (true) {
         	spectrum.scale(1);
+        	spectrum.getDisplay().setPalette(spectrum.getDisplay().getDefaultPalette());
 			img = createImage(spectrum.getDisplay());
 			
         }
@@ -230,8 +233,10 @@ public class jMESYS extends Applet
 	
 	private void creaMenu(ActionListener t) {
 		
-		jMESYSFamily[] families = new jMESYSFamily[1];
+		jMESYSFamily[] families = new jMESYSFamily[3];
 		families[0] = new SpectrumModels();
+		families[1] = new Atari2600Models();
+		families[2] = new ColecoVisionModels();
 		
 		//menubar = (new jMESYSMenu(COMPUTERS));
 		menubar = (new jMESYSMenu(families));

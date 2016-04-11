@@ -11,4 +11,5 @@ public interface CPU {
 	public int mem16(int addr);
 	public void mem16(int addr, int v);
 	
+	public void nmi();
 }

@@ -2,14 +2,14 @@ package jMESYS.gui;
 
 import java.awt.MenuItem;
 
+import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.jMESYSFamily;
-import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
 
 public class jMESYSMenuComputerItem extends MenuItem {
 	
 	private int model = 0;
 	private jMESYSFamily family;
-	private Spectrum48k computer;
+	private jMESYSComputer computer;
 	
 	public int getModel() {
 		return model;
@@ -27,11 +27,11 @@ public class jMESYSMenuComputerItem extends MenuItem {
 		this.family = family;
 	}
 
-	public Spectrum48k getComputer() {
+	public jMESYSComputer getComputer() {
 		return computer;
 	}
 
-	public void setComputer(Spectrum48k computer) {
+	public void setComputer(jMESYSComputer computer) {
 		this.computer = computer;
 	}
 	

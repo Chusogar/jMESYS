@@ -1205,7 +1205,7 @@ public final class Z80 {
 		return true;
 	}
 
-	void nmi()
+	public void nmi()
 	{
 		IFF &= 2;
 		halted = false;

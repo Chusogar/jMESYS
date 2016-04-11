@@ -49,6 +49,8 @@ public abstract class jMESYSComputer extends Thread implements CPU {
 	private FileFormat[] supportedFormats = null;
 	public abstract FileFormat[] getSupportedFileFormats();
 	
+	public abstract void loadRoms() throws Exception;
+	
 	// frames
 	protected abstract void end_frame();
 	

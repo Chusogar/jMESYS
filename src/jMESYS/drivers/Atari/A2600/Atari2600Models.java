@@ -2,7 +2,7 @@ package jMESYS.drivers.Atari.A2600;
 
 import jMESYS.drivers.jMESYSComputer;
 import jMESYS.drivers.jMESYSFamily;
-import jMESYS.drivers.Sinclair.Spectrum.Spectrum48k;
+
 
 public class Atari2600Models extends jMESYSFamily {
 	
@@ -32,18 +32,18 @@ public class Atari2600Models extends jMESYSFamily {
     		
     		models = new jMESYSComputer[1];
     		
-    		models[MODE_A2600] = new Spectrum48k(MODE_A2600);
+    		models[MODE_A2600] = new A2600(MODE_A2600);
 		}
 		
 		return models;
 	}
 
 	public jMESYSComputer setModel(int iModel) throws Exception {
-		Spectrum48k myModel = null;
+		A2600 myModel = null;
     	
     	switch (iModel) {
     		case MODE_A2600:
-    			myModel = new Spectrum48k(MODE_A2600);
+    			myModel = new A2600(MODE_A2600);
     			myModel.loadRoms();
     			break;
     	}

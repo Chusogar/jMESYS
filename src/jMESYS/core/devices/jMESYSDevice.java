@@ -9,6 +9,7 @@ public interface jMESYSDevice {
 	public static int TYPE_PRINTER 		= 1;
 	public static int TYPE_INTERFACE 	= 3;
 	public static int TYPE_SOUND_CARD 	= 4;
+	public static int TYPE_VIDEO_CARD 	= 5;
 	
 	// port
 	public abstract int getDeviceType();

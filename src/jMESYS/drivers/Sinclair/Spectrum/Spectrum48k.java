@@ -1133,4 +1133,8 @@ loop:
 		cpu.interrupt(0xFF);
 		cpu.execute();
 	}
+
+	public void nmi() {
+		cpu.nmi();
+	}
 }
